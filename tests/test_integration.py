@@ -9,6 +9,7 @@ import pytest
 
 from src.causal_methods.did import DifferenceInDifferences
 from src.causal_methods.psm import PropensityScoreMatching, load_and_analyze_psm
+from src.causal_methods.dml import DoubleMachineLearning, load_and_analyze_dml
 from src.data_simulation import TaxSoftwareDataSimulator, generate_and_save_data
 
 
@@ -735,3 +736,132 @@ class TestPSMAndDiDComparison:
                 abs(estimates["naive"]) < 1.0
             )  # Filing rate effect shouldn't be > 100pp
             assert abs(estimates["psm"]) < 1.0
+
+
+class TestDMLIntegration:
+    """Test Double Machine Learning integration with data simulation."""
+
+    def test_dml_basic_workflow(self, real_config_path):
+        """Test basic DML workflow with synthetic data."""
+        # Generate data
+        df = generate_and_save_data(
+            output_path=None,
+            n_users=300,  # Larger sample for DML
+            config_path=real_config_path,
+        )
+        
+        # Initialize DML
+        dml = DoubleMachineLearning(df, random_state=42)
+        
+        # Select numeric covariates only (DML needs numeric data for scaling)
+        covariates = ['age', 'tech_savviness', 'filed_2023', 'early_login_2024']
+        
+        # Estimate treatment effects
+        results = dml.estimate_treatment_effects(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariates=covariates,
+            outcome_model='random_forest',
+            treatment_model='random_forest',
+            n_folds=2,
+            scale_features=True
+        )
+        
+        # Verify results structure
+        assert isinstance(results, dict)
+        assert 'ate' in results
+        assert 'se' in results
+        assert 'p_value' in results
+        assert 'ci_lower' in results
+        assert 'ci_upper' in results
+        
+        # Verify values are reasonable
+        assert isinstance(results['ate'], (int, float))
+        assert isinstance(results['se'], (int, float))
+        assert results['se'] >= 0
+        assert 0 <= results['p_value'] <= 1
+        assert results['ci_lower'] <= results['ci_upper']
+        assert results['n_samples'] == len(df)
+        
+        # Check DML object state
+        assert dml.fitted
+        assert 'filed_2024' in dml.treatment_effects
+        assert 'filed_2024' in dml.residuals
+    
+    def test_dml_multiple_outcomes(self, real_config_path):
+        """Test DML with multiple outcomes."""
+        df = generate_and_save_data(
+            output_path=None,
+            n_users=250,
+            config_path=real_config_path,
+        )
+        
+        dml = DoubleMachineLearning(df, random_state=42)
+        covariates = ['age', 'tech_savviness', 'filed_2023']
+        
+        # Test multiple outcomes
+        results = dml.estimate_multiple_outcomes(
+            outcome_cols=['filed_2024', 'satisfaction_2024'],
+            treatment_col='used_smart_assistant',
+            covariates=covariates,
+            n_folds=2
+        )
+        
+        assert len(results) == 2
+        assert 'filed_2024' in results
+        assert 'satisfaction_2024' in results
+        
+        for outcome, result in results.items():
+            assert 'ate' in result
+            assert 'se' in result
+            assert 'p_value' in result
+
+
+class TestMethodComparison:
+    """Test comparing different causal inference methods on the same data."""
+    
+    def test_psm_vs_dml_comparison(self, real_config_path):
+        """Compare PSM and DML results on the same dataset."""
+        # Generate larger dataset for method comparison
+        df = generate_and_save_data(
+            output_path=None,
+            n_users=400,
+            config_path=real_config_path,
+        )
+        
+        covariates = ['age', 'tech_savviness', 'filed_2023', 'early_login_2024']
+        
+        # PSM Analysis
+        psm = PropensityScoreMatching(df)
+        psm.estimate_propensity_scores(
+            treatment_col='used_smart_assistant',
+            covariates=covariates
+        )
+        psm.perform_matching(method='nearest_neighbor', caliper=0.1)
+        psm_effects = psm.estimate_treatment_effects(
+            outcome_cols='filed_2024',
+            treatment_col='used_smart_assistant'
+        )
+        
+        # DML Analysis
+        dml = DoubleMachineLearning(df, random_state=42)
+        dml_effects = dml.estimate_treatment_effects(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariates=covariates,
+            n_folds=2
+        )
+        
+        # Compare results
+        psm_ate = psm_effects['filed_2024']['ate']
+        dml_ate = dml_effects['ate']
+        
+        # Both should be numeric and not NaN
+        assert isinstance(psm_ate, (int, float))
+        assert isinstance(dml_ate, (int, float))
+        assert not np.isnan(psm_ate)
+        assert not np.isnan(dml_ate)
+        
+        # Results should be in reasonable range (between -1 and 1 for filing rate effects)
+        assert -1 <= psm_ate <= 1
+        assert -1 <= dml_ate <= 1
