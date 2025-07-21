@@ -34,6 +34,12 @@ Comprehensive guides for understanding and applying causal inference methods in 
 - **Business Application**: Targeted interventions, segment-specific analysis
 - **Key Features**: Individual treatment effects, quality diagnostics, placebo testing
 
+### 🌲 **[Causal Forest](causal_forest_guide.md)**
+- **Use Case**: Heterogeneous treatment effects with rich covariates
+- **Strengths**: Personalized effects, feature importance, segment discovery
+- **Business Application**: Personalized targeting, customer segmentation, ROI optimization
+- **Key Features**: Individual treatment effects, automatic covariate selection, business segment analysis
+
 ## 🔍 **Method Selection Framework**
 
 ### **Data-Driven Method Selection**
@@ -44,7 +50,8 @@ Comprehensive guides for understanding and applying causal inference methods in 
 | **Observational + Rich Covariates** | PSM → DML | Synthetic Control |
 | **Before/After + Panel Data** | DiD | Synthetic Control |
 | **High-Dimensional Covariates** | DML | PSM with ML propensity scores |
-| **Individual-Level Effects Needed** | Synthetic Control | DML |
+| **Individual-Level Effects Needed** | Synthetic Control | Causal Forest |
+| **Heterogeneous Effects Needed** | Causal Forest | Synthetic Control |
 | **Limited Pre-treatment Data** | PSM | DiD (if temporal structure) |
 
 ### **Business Context Method Selection**
@@ -52,10 +59,11 @@ Comprehensive guides for understanding and applying causal inference methods in 
 | Business Question | Primary Method | Secondary Method | Rationale |
 |------------------|----------------|------------------|-----------|
 | **"Does our A/B test show real impact?"** | CUPED | DML | Reduce variance in experiments |
-| **"What's the effect on different user segments?"** | Synthetic Control | PSM | Individual-level heterogeneity |
+| **"What's the effect on different user segments?"** | Causal Forest | Synthetic Control | Personalized treatment effects |
 | **"Did our feature rollout work?"** | DiD | Synthetic Control | Natural experiment design |
 | **"How do we control for many confounders?"** | DML | PSM | Handle high-dimensional data |
-| **"Which users benefit most from treatment?"** | Synthetic Control | DML | Transparent individual effects |
+| **"Which users benefit most from treatment?"** | Causal Forest | Synthetic Control | Heterogeneity and feature importance |
+| **"Should we personalize our intervention?"** | Causal Forest | DML | Segment-specific targeting |
 
 ### **Sample Size Considerations**
 
@@ -76,38 +84,44 @@ Comprehensive guides for understanding and applying causal inference methods in 
 4. **Advanced**: [DML Guide](dml_guide.md) - Master ML for causal inference
 5. **Specialized**: [Synthetic Control Guide](synthetic_control_guide.md) - Individual-level effects
 
+### **🎯 Advanced Path: Heterogeneous Effects**
+6. **Personalization**: [Causal Forest Guide](causal_forest_guide.md) - Heterogeneous treatment effects
+
 ### **🏢 Business Analyst Path**
 1. **Quick Start**: [CUPED Guide](cuped_guide.md) - Immediate A/B test improvements
 2. **Core Method**: [PSM Guide](psm_guide.md) - Most commonly applicable
 3. **Advanced**: [DML Guide](dml_guide.md) - Handle complex business data
+4. **Personalization**: [Causal Forest Guide](causal_forest_guide.md) - Segment-specific insights
 
 ### **🎓 Data Scientist Path**
 1. **Foundation**: [DiD Guide](did_guide.md) - Causal inference principles
 2. **ML Integration**: [DML Guide](dml_guide.md) - Combine ML with causal inference
 3. **Individual Effects**: [Synthetic Control Guide](synthetic_control_guide.md) - Advanced heterogeneity analysis
+4. **Heterogeneous Effects**: [Causal Forest Guide](causal_forest_guide.md) - Personalized treatment effects
 
 ## 🔬 **Method Comparison Matrix**
 
-| Aspect | PSM | DML | CUPED | DiD | Synthetic Control |
-|--------|-----|-----|-------|-----|------------------|
-| **Complexity** | Low | High | Medium | Medium | Medium |
-| **Assumptions** | Strong | Medium | Minimal | Strong | Medium |
-| **Data Requirements** | Moderate | High | Minimal | Panel | Rich Pre-data |
-| **Individual Effects** | ✅ | ✅ | ❌ | ❌ | ✅ |
-| **Transparency** | High | Low | High | High | High |
-| **Business Interpretability** | High | Medium | High | High | High |
+| Aspect | PSM | DML | CUPED | DiD | Synthetic Control | Causal Forest |
+|--------|-----|-----|-------|-----|------------------|---------------|
+| **Complexity** | Low | High | Medium | Medium | Medium | High |
+| **Assumptions** | Strong | Medium | Minimal | Strong | Medium | Medium |
+| **Data Requirements** | Moderate | High | Minimal | Panel | Rich Pre-data | High |
+| **Individual Effects** | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| **Heterogeneous Effects** | ❌ | ⚠️ | ❌ | ❌ | ✅ | ✅ |
+| **Transparency** | High | Low | High | High | High | Medium |
+| **Business Interpretability** | High | Medium | High | High | High | High |
 
 ### **Assumption Strength Guide**
 
 - **Minimal**: Few strong assumptions (CUPED)
-- **Medium**: Moderate assumptions, testable (DML, Synthetic Control)
+- **Medium**: Moderate assumptions, testable (DML, Causal Forest, Synthetic Control)
 - **Strong**: Several critical assumptions (PSM, DiD)
 
 ### **Data Requirement Details**
 
 - **Minimal**: Can work with basic experimental data (CUPED)
 - **Moderate**: Needs good set of observed confounders (PSM)
-- **High**: Requires many variables or specific structure (DML)
+- **High**: Requires many variables or specific structure (DML, Causal Forest)
 - **Panel**: Needs multiple time periods (DiD)
 - **Rich Pre-data**: Needs multiple relevant pre-treatment predictors (Synthetic Control)
 
@@ -118,15 +132,19 @@ Comprehensive guides for understanding and applying causal inference methods in 
 ```
 Is this a randomized experiment?
 ├─ YES → CUPED (enhance precision)
-└─ NO → Do you have rich pre-treatment data?
-    ├─ YES → Do you need individual effects?
-    │   ├─ YES → Synthetic Control
-    │   └─ NO → Do you have high-dimensional data?
-    │       ├─ YES → DML
-    │       └─ NO → PSM
-    └─ NO → Do you have before/after data?
-        ├─ YES → DiD
-        └─ NO → PSM (with available confounders)
+└─ NO → Do you need heterogeneous effects?
+    ├─ YES → Do you have rich covariates?
+    │   ├─ YES → Causal Forest
+    │   └─ NO → Synthetic Control (if rich pre-treatment data)
+    └─ NO → Do you have rich pre-treatment data?
+        ├─ YES → Do you need individual effects?
+        │   ├─ YES → Synthetic Control
+        │   └─ NO → Do you have high-dimensional data?
+        │       ├─ YES → DML
+        │       └─ NO → PSM
+        └─ NO → Do you have before/after data?
+            ├─ YES → DiD
+            └─ NO → PSM (with available confounders)
 ```
 
 ### **Quality Assessment Checklist**
@@ -144,6 +162,7 @@ Is this a randomized experiment?
 - **CUPED**: [ ] Covariate correlation, [ ] Variance reduction achieved
 - **DiD**: [ ] Parallel trends, [ ] No anticipation effects
 - **Synthetic Control**: [ ] Pre-treatment fit, [ ] Weight concentration
+- **Causal Forest**: [ ] Feature importance validity, [ ] Effect heterogeneity, [ ] Model stability
 
 ## 💼 **Business Implementation Guidelines**
 
@@ -156,6 +175,7 @@ Is this a randomized experiment?
 | **CUPED** | "Improved A/B test precision using history" | Low - straightforward concept |
 | **DiD** | "Compared before/after trends" | Medium - requires trend explanation |
 | **Synthetic Control** | "Built artificial control groups" | Medium - intuitive but detailed |
+| **Causal Forest** | "Personalized effects for different user types" | Medium - requires heterogeneity explanation |
 
 ### **Resource Requirements**
 
@@ -166,13 +186,14 @@ Is this a randomized experiment?
 | **CUPED** | Low | Fast | Beginner |
 | **DiD** | Medium | Medium | Intermediate |
 | **Synthetic Control** | High | Medium | Intermediate |
+| **Causal Forest** | High | Medium | Advanced |
 
 ### **Implementation Timeline**
 
 - **Immediate (1-2 weeks)**: CUPED for existing A/B tests
 - **Short-term (1 month)**: PSM for observational analysis
 - **Medium-term (2-3 months)**: DiD for policy evaluations
-- **Long-term (3-6 months)**: DML and Synthetic Control for advanced analysis
+- **Long-term (3-6 months)**: DML, Synthetic Control, and Causal Forest for advanced analysis
 
 ## 🎓 **Additional Resources**
 
@@ -182,10 +203,11 @@ Is this a randomized experiment?
 - **CUPED**: Deng et al. (2013), Zhao et al. (2019)
 - **DiD**: Angrist & Pischke (2009), Cunningham (2021)
 - **Synthetic Control**: Abadie et al. (2010), Arkhangelsky et al. (2021)
+- **Causal Forest**: Wager & Athey (2018), Athey & Wager (2019)
 
 ### **Software Ecosystems**
-- **Python**: This repository, EconML, DoWhy
-- **R**: MatchIt, grf, did, Synth
+- **Python**: This repository, EconML (Causal Forest), DoWhy
+- **R**: MatchIt, grf (Causal Forest), did, Synth
 - **Commercial**: Stata, SAS
 
 ### **Professional Development**

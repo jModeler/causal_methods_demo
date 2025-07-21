@@ -151,8 +151,8 @@ class TestDMLTreatmentEffects:
         assert all(key in results for key in required_keys)
 
         # Check values are reasonable
-        assert isinstance(results["ate"], (int, float))
-        assert isinstance(results["se"], (int, float))
+        assert isinstance(results["ate"], int | float)
+        assert isinstance(results["se"], int | float)
         assert results["se"] >= 0
         assert results["ci_lower"] <= results["ci_upper"]
         assert 0 <= results["p_value"] <= 1
@@ -177,8 +177,8 @@ class TestDMLTreatmentEffects:
         )
 
         # Check results
-        assert isinstance(results["ate"], (int, float))
-        assert results["outcome_is_binary"] == True
+        assert isinstance(results["ate"], int | float)
+        assert results["outcome_is_binary"]
 
         # Check fold performance includes classification metrics
         for fold_data in results["fold_performance"]:
@@ -202,7 +202,7 @@ class TestDMLTreatmentEffects:
                 treatment_model="random_forest",
                 n_folds=2,
             )
-            assert isinstance(results["ate"], (int, float))
+            assert isinstance(results["ate"], int | float)
 
     def test_different_fold_numbers(self, sample_data):
         """Test different numbers of cross-fitting folds."""
@@ -239,8 +239,8 @@ class TestDMLTreatmentEffects:
         )
 
         # Both should work
-        assert isinstance(results_scaled["ate"], (int, float))
-        assert isinstance(results_unscaled["ate"], (int, float))
+        assert isinstance(results_scaled["ate"], int | float)
+        assert isinstance(results_unscaled["ate"], int | float)
 
     def test_estimate_multiple_outcomes(self, sample_data):
         """Test estimating effects for multiple outcomes."""
@@ -257,7 +257,7 @@ class TestDMLTreatmentEffects:
         assert "outcome_continuous" in results
         assert "outcome_binary" in results
 
-        for outcome, result in results.items():
+        for _outcome, result in results.items():
             assert "ate" in result
             assert "se" in result
 
@@ -496,7 +496,7 @@ class TestDMLIntegration:
             n_folds=2,
         )
 
-        assert isinstance(results["ate"], (int, float))
+        assert isinstance(results["ate"], int | float)
         assert results["n_samples"] > 0
 
     def test_load_and_analyze_dml_function(self, tax_data, tmp_path):
@@ -563,7 +563,7 @@ class TestDMLRobustness:
             covariates=["age", "category_numeric", "bool_var"],
         )
 
-        assert isinstance(results["ate"], (int, float))
+        assert isinstance(results["ate"], int | float)
 
     def test_boolean_treatment_and_outcome(self, sample_data):
         """Test with boolean treatment and outcome."""
@@ -579,7 +579,7 @@ class TestDMLRobustness:
             covariates=["age", "income"],
         )
 
-        assert isinstance(results["ate"], (int, float))
+        assert isinstance(results["ate"], int | float)
 
     def test_reproducibility(self, sample_data):
         """Test that results are reproducible with same random seed."""
@@ -616,7 +616,7 @@ class TestDMLRobustness:
                 n_folds=10,  # Many folds for small dataset
             )
 
-        assert isinstance(results["ate"], (int, float))
+        assert isinstance(results["ate"], int | float)
         assert results["n_folds"] == 10
 
 

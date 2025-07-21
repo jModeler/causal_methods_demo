@@ -7,11 +7,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.causal_methods.did import DifferenceInDifferences
-from src.causal_methods.psm import PropensityScoreMatching, load_and_analyze_psm
-from src.causal_methods.dml import DoubleMachineLearning, load_and_analyze_dml
-from src.data_simulation import TaxSoftwareDataSimulator, generate_and_save_data
 from src.causal_methods.cuped import CUPED
+from src.causal_methods.did import DifferenceInDifferences
+from src.causal_methods.dml import DoubleMachineLearning
+from src.causal_methods.psm import PropensityScoreMatching, load_and_analyze_psm
+from src.data_simulation import TaxSoftwareDataSimulator, generate_and_save_data
 
 
 class TestFullWorkflow:
@@ -750,13 +750,13 @@ class TestDMLIntegration:
             n_users=300,  # Larger sample for DML
             config_path=real_config_path,
         )
-        
+
         # Initialize DML
         dml = DoubleMachineLearning(df, random_state=42)
-        
+
         # Select numeric covariates only (DML needs numeric data for scaling)
         covariates = ['age', 'tech_savviness', 'filed_2023', 'early_login_2024']
-        
+
         # Estimate treatment effects
         results = dml.estimate_treatment_effects(
             outcome_col='filed_2024',
@@ -767,7 +767,7 @@ class TestDMLIntegration:
             n_folds=2,
             scale_features=True
         )
-        
+
         # Verify results structure
         assert isinstance(results, dict)
         assert 'ate' in results
@@ -775,20 +775,20 @@ class TestDMLIntegration:
         assert 'p_value' in results
         assert 'ci_lower' in results
         assert 'ci_upper' in results
-        
+
         # Verify values are reasonable
-        assert isinstance(results['ate'], (int, float))
-        assert isinstance(results['se'], (int, float))
+        assert isinstance(results['ate'], int | float)
+        assert isinstance(results['se'], int | float)
         assert results['se'] >= 0
         assert 0 <= results['p_value'] <= 1
         assert results['ci_lower'] <= results['ci_upper']
         assert results['n_samples'] == len(df)
-        
+
         # Check DML object state
         assert dml.fitted
         assert 'filed_2024' in dml.treatment_effects
         assert 'filed_2024' in dml.residuals
-    
+
     def test_dml_multiple_outcomes(self, real_config_path):
         """Test DML with multiple outcomes."""
         df = generate_and_save_data(
@@ -796,10 +796,10 @@ class TestDMLIntegration:
             n_users=250,
             config_path=real_config_path,
         )
-        
+
         dml = DoubleMachineLearning(df, random_state=42)
         covariates = ['age', 'tech_savviness', 'filed_2023']
-        
+
         # Test multiple outcomes
         results = dml.estimate_multiple_outcomes(
             outcome_cols=['filed_2024', 'satisfaction_2024'],
@@ -807,12 +807,12 @@ class TestDMLIntegration:
             covariates=covariates,
             n_folds=2
         )
-        
+
         assert len(results) == 2
         assert 'filed_2024' in results
         assert 'satisfaction_2024' in results
-        
-        for outcome, result in results.items():
+
+        for _outcome, result in results.items():
             assert 'ate' in result
             assert 'se' in result
             assert 'p_value' in result
@@ -820,78 +820,78 @@ class TestDMLIntegration:
 
 class TestCUPEDIntegration:
     """Integration tests for CUPED functionality."""
-    
+
     def test_cuped_on_synthetic_data(self, sample_dataset):
         """Test CUPED workflow on synthetic data."""
         cuped = CUPED(sample_dataset, random_state=42)
-        
+
         # Define pre-experiment covariates from tax software dataset
         pre_covariates = ['filed_2023', 'sessions_2023']
-        
+
         # Estimate treatment effects using actual column names
         results = cuped.estimate_treatment_effects(
             outcome_col='filed_2024',
             treatment_col='used_smart_assistant',
             covariate_cols=pre_covariates
         )
-        
+
         # Basic checks
         assert 'cuped' in results
         assert 'original' in results
         assert 'summary' in results
-        
+
         # Should have some variance reduction potential with 2023 data
         ate_diff = abs(results['cuped']['ate'] - results['original']['ate'])
         assert ate_diff < 0.5  # Should be close
-    
+
     def test_cuped_with_weak_covariates(self, sample_dataset):
         """Test CUPED performance with weak covariates."""
         # Create weak covariate
         sample_data_weak = sample_dataset.copy()
         sample_data_weak['weak_covariate'] = np.random.normal(0, 1, len(sample_dataset))
-        
+
         cuped = CUPED(sample_data_weak, random_state=42)
-        
+
         results = cuped.estimate_treatment_effects(
             outcome_col='filed_2024',
             treatment_col='used_smart_assistant',
             covariate_cols=['weak_covariate']
         )
-        
+
         # Should still work but with minimal improvement
         assert 'summary' in results
         assert 'variance_reduction' in results['summary']
         # With weak covariates, might not get much improvement
         assert results['summary']['variance_reduction'] < 0.2
-    
+
     def test_cuped_binary_outcome(self, sample_dataset):
         """Test CUPED with binary outcome."""
         # filed_2024 is already binary in our dataset
         cuped = CUPED(sample_dataset, random_state=42)
-        
+
         results = cuped.estimate_treatment_effects(
             outcome_col='filed_2024',
             treatment_col='used_smart_assistant',
             covariate_cols=['filed_2023']
         )
-        
+
         # Should handle binary outcome correctly
         assert 'cuped' in results
         assert 'original' in results
-        assert isinstance(results['cuped']['ate'], (int, float))
+        assert isinstance(results['cuped']['ate'], int | float)
         assert -1 <= results['cuped']['ate'] <= 1  # ATE should be reasonable for binary outcome
 
 
 class TestMethodComparison:
     """Compare different causal inference methods."""
-    
+
     def test_all_methods_on_same_data(self, sample_dataset):
         """Compare PSM, DML, and CUPED on the same dataset."""
         # Use actual column names from tax software dataset
         numeric_covariates = ['filed_2023', 'sessions_2023', 'age']
-        
+
         results = {}
-        
+
         # PSM
         try:
             psm = PropensityScoreMatching(sample_dataset)
@@ -902,7 +902,7 @@ class TestMethodComparison:
         except Exception as e:
             results['PSM'] = None
             print(f"PSM failed: {e}")
-        
+
         # DML
         try:
             dml = DoubleMachineLearning(sample_dataset, random_state=42)
@@ -916,7 +916,7 @@ class TestMethodComparison:
         except Exception as e:
             results['DML'] = None
             print(f"DML failed: {e}")
-        
+
         # CUPED
         try:
             cuped = CUPED(sample_dataset, random_state=42)
@@ -929,44 +929,44 @@ class TestMethodComparison:
         except Exception as e:
             results['CUPED'] = None
             print(f"CUPED failed: {e}")
-        
+
         # Naive difference
         treated_mean = sample_dataset[sample_dataset['used_smart_assistant'] == 1]['filed_2024'].mean()
         control_mean = sample_dataset[sample_dataset['used_smart_assistant'] == 0]['filed_2024'].mean()
         results['Naive'] = treated_mean - control_mean
-        
+
         # Check that we got some results
         successful_methods = [k for k, v in results.items() if v is not None]
         assert len(successful_methods) >= 2  # At least naive + one other method
-        
+
         print("Method comparison results:")
         for method, ate in results.items():
             if ate is not None:
                 print(f"  {method}: {ate:.4f}")
-        
+
         # All estimates should be reasonable for binary outcome (between -1 and 1)
-        for method, ate in results.items():
+        for _method, ate in results.items():
             if ate is not None:
                 assert -1 <= ate <= 1  # Reasonable range for binary outcome ATE
-    
+
     def test_cuped_vs_naive_precision(self, sample_dataset):
         """Test that CUPED provides better precision than naive analysis."""
         cuped = CUPED(sample_dataset, random_state=42)
-        
+
         results = cuped.estimate_treatment_effects(
             outcome_col='filed_2024',
             treatment_col='used_smart_assistant',
             covariate_cols=['filed_2023', 'sessions_2023']
         )
-        
+
         # CUPED should have smaller confidence intervals
         orig_ci_width = results['original']['ci_upper'] - results['original']['ci_lower']
         cuped_ci_width = results['cuped']['ci_upper'] - results['cuped']['ci_lower']
-        
+
         # Allow for some cases where CUPED doesn't help much
         ci_improvement = (orig_ci_width - cuped_ci_width) / orig_ci_width
         assert ci_improvement >= -0.1  # Allow small degradation
-        
+
         # Variance reduction should be non-negative in most cases
         assert results['summary']['variance_reduction'] >= -0.1
 
@@ -974,9 +974,9 @@ class TestMethodComparison:
     def test_synthetic_control_integration(self, sample_dataset):
         """Test complete synthetic control workflow with real data structure."""
         from src.causal_methods.synthetic_control import SyntheticControl
-        
+
         sc = SyntheticControl(sample_dataset, random_state=42)
-        
+
         # Test construction with available predictors
         results = sc.construct_synthetic_controls(
             unit_id_col='user_id',
@@ -985,67 +985,417 @@ class TestMethodComparison:
             outcome_post_col='filed_2024',
             predictor_cols=['filed_2023', 'age', 'tech_savviness']
         )
-        
+
         # Verify results structure
         assert 'average_treatment_effect' in results
         assert 'individual_results' in results
         assert 'ate_std_error' in results
-        
+
         # Verify individual results DataFrame
         individual_df = results['individual_results']
         assert len(individual_df) > 0
         assert 'treatment_effect' in individual_df.columns
         assert 'pre_treatment_error' in individual_df.columns
-        
+
         # Test placebo testing
         placebo_results = sc.estimate_statistical_significance(n_placebo=5)
         assert 'p_value' in placebo_results
         assert 0 <= placebo_results['p_value'] <= 1
-        
+
         # Test report generation
         report = sc.generate_summary_report()
         assert isinstance(report, str)
         assert len(report) > 0
-    
+
     def test_synthetic_control_quality_assessment(self, sample_dataset):
         """Test synthetic control quality metrics."""
         from src.causal_methods.synthetic_control import SyntheticControl
-        
+
         sc = SyntheticControl(sample_dataset, random_state=42)
         results = sc.construct_synthetic_controls()
-        
+
         # Quality metrics should be reasonable
         assert 'average_pre_treatment_error' in results
         assert 'weight_concentration' in results
-        
+
         # Pre-treatment error should be non-negative
         assert results['average_pre_treatment_error'] >= 0
-        
+
         # Weight concentration should be between 0 and 1
         assert 0 <= results['weight_concentration'] <= 1
-        
+
         # Check that weights are stored properly
         assert len(sc.synthetic_weights) > 0
-        
+
         # Each set of weights should sum to 1
-        for unit_id, weights in sc.synthetic_weights.items():
+        for _unit_id, weights in sc.synthetic_weights.items():
             assert abs(weights.sum() - 1.0) < 1e-6
             assert all(w >= 0 for w in weights)
-    
+
     def test_synthetic_control_with_missing_data(self, sample_dataset):
         """Test synthetic control robustness with missing data."""
         from src.causal_methods.synthetic_control import SyntheticControl
-        
+
         # Introduce some missing values
         modified_data = sample_dataset.copy()
         modified_data.loc[0, 'age'] = np.nan
         modified_data.loc[1, 'tech_savviness'] = np.nan
-        
+
         sc = SyntheticControl(modified_data, random_state=42)
-        
+
         # Should handle missing values gracefully
         with pytest.warns(UserWarning, match="Missing values detected"):
             results = sc.construct_synthetic_controls()
-        
+
         assert 'average_treatment_effect' in results
         assert results['average_treatment_effect'] is not None
+
+
+class TestCausalForestIntegration:
+    """Integration tests for Causal Forest method."""
+
+    def test_causal_forest_basic_workflow(self, sample_dataset):
+        """Test complete causal forest workflow on tax software data."""
+        from src.causal_methods.causal_forest import CausalForest
+
+        cf = CausalForest(sample_dataset, random_state=42)
+
+        # Test fitting
+        performance = cf.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['filed_2023', 'age', 'tech_savviness', 'sessions_2023'],
+            test_size=0.3
+        )
+
+        # Check performance metrics
+        assert isinstance(performance, dict)
+        assert 'implementation' in performance
+        assert 'train_ate' in performance
+        assert 'test_ate' in performance
+        assert 'heterogeneity_measure' in performance
+
+        # Check treatment effects
+        te = cf.treatment_effects
+        assert 'ate' in te
+        assert 'individual_effects' in te
+        assert 'heterogeneity_std' in te
+        assert 'p_value' in te
+
+        # ATE should be reasonable for tax filing context
+        ate = te['ate']
+        assert -0.5 <= ate <= 0.5, f"ATE {ate} seems unrealistic for filing rates"
+
+        # Individual effects should have reasonable variance
+        individual_effects = te['individual_effects']
+        assert len(individual_effects) > 0
+        assert np.std(individual_effects) >= 0
+
+    def test_causal_forest_feature_importance(self, sample_dataset):
+        """Test feature importance calculation in causal forest."""
+        from src.causal_methods.causal_forest import CausalForest
+
+        cf = CausalForest(sample_dataset, random_state=42)
+
+        cf.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['filed_2023', 'age', 'tech_savviness', 'sessions_2023']
+        )
+
+        # Check feature importance structure
+        fi = cf.feature_importance
+        assert 'importances' in fi
+        assert 'feature_names' in fi
+        assert 'sorted_indices' in fi
+
+        # Check dimensions
+        assert len(fi['importances']) == len(cf.covariate_cols)
+        assert len(fi['feature_names']) == len(cf.covariate_cols)
+        assert len(fi['sorted_indices']) == len(cf.covariate_cols)
+
+        # Importances should be non-negative
+        assert all(imp >= 0 for imp in fi['importances'])
+
+        # Feature names should match covariates
+        assert set(fi['feature_names']) == set(cf.covariate_cols)
+
+    def test_causal_forest_conditional_effects(self, sample_dataset):
+        """Test conditional treatment effect estimation."""
+        from src.causal_methods.causal_forest import CausalForest
+
+        cf = CausalForest(sample_dataset, random_state=42)
+
+        cf.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['age', 'tech_savviness', 'filed_2023']
+        )
+
+        # Test conditional effects for specific user types
+        segments = {
+            'young_tech_savvy': {'age': 25, 'tech_savviness': 8},
+            'older_low_tech': {'age': 65, 'tech_savviness': 3},
+            'previous_filer': {'filed_2023': 1, 'age': 45},
+            'new_user': {'filed_2023': 0, 'age': 35}
+        }
+
+        segment_effects = {}
+        for segment_name, features in segments.items():
+            result = cf.estimate_conditional_effects(features)
+            segment_effects[segment_name] = result['conditional_treatment_effect']
+
+            # Check result structure
+            assert 'conditional_treatment_effect' in result
+            assert 'feature_values' in result
+            assert isinstance(result['conditional_treatment_effect'], int | float)
+
+        # Effects should vary across segments (heterogeneity)
+        effect_values = list(segment_effects.values())
+        if len(set(effect_values)) > 1:  # If there's variation
+            assert np.std(effect_values) > 0, "Expected heterogeneity across segments"
+
+    def test_causal_forest_vs_other_methods(self, sample_dataset):
+        """Compare causal forest with other causal inference methods."""
+        from src.causal_methods.causal_forest import CausalForest
+        from src.causal_methods.dml import DoubleMachineLearning
+        from src.causal_methods.psm import PropensityScoreMatching
+
+        # Common setup
+        outcome_col = 'filed_2024'
+        treatment_col = 'used_smart_assistant'
+        covariates = ['age', 'tech_savviness', 'filed_2023']
+
+        results = {}
+
+        # Causal Forest
+        cf = CausalForest(sample_dataset, random_state=42)
+        cf.fit_causal_forest(outcome_col, treatment_col, covariates)
+        results['Causal Forest'] = cf.treatment_effects['ate']
+
+        # PSM for comparison
+        try:
+            psm = PropensityScoreMatching(sample_dataset)
+            psm.estimate_propensity_scores(covariates=covariates)
+            psm.perform_matching(method='nearest_neighbor')
+            psm_effects = psm.estimate_treatment_effects(outcome_cols=outcome_col)
+            results['PSM'] = psm_effects[outcome_col]['ate']
+        except Exception:
+            # PSM might fail with small samples
+            pass
+
+        # DML for comparison
+        try:
+            dml = DoubleMachineLearning(sample_dataset, random_state=42)
+            dml_results = dml.estimate_treatment_effects(outcome_col, treatment_col, covariates)
+            results['DML'] = dml_results['ate']
+        except Exception:
+            # DML might fail with small samples
+            pass
+
+        # Check that causal forest produces reasonable results
+        cf_ate = results['Causal Forest']
+        assert isinstance(cf_ate, int | float)
+        assert not np.isnan(cf_ate)
+        assert not np.isinf(cf_ate)
+
+        # If we have multiple methods, check for reasonable consensus
+        if len(results) > 1:
+            effect_estimates = list(results.values())
+            effect_range = max(effect_estimates) - min(effect_estimates)
+
+            # Effects shouldn't differ by more than 50 percentage points (very liberal)
+            assert effect_range <= 0.5, f"Methods disagree too much: {results}"
+
+    def test_causal_forest_heterogeneity_detection(self, sample_dataset):
+        """Test causal forest's ability to detect treatment effect heterogeneity."""
+        from src.causal_methods.causal_forest import CausalForest
+
+        cf = CausalForest(sample_dataset, random_state=42)
+
+        performance = cf.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['age', 'tech_savviness', 'filed_2023', 'sessions_2023']
+        )
+
+        # Check heterogeneity measures
+        heterogeneity_ratio = performance['heterogeneity_measure']
+        heterogeneity_std = cf.treatment_effects['heterogeneity_std']
+
+        assert heterogeneity_ratio >= 0
+        assert heterogeneity_std >= 0
+
+        # Individual effects should exist
+        individual_effects = cf.treatment_effects['individual_effects']
+        assert len(individual_effects) > 0
+
+        # Check effect distribution
+        positive_effects = np.sum(individual_effects > 0)
+        negative_effects = np.sum(individual_effects < 0)
+        total_effects = len(individual_effects)
+
+        # At least some variation should exist (not all identical)
+        unique_effects = len(np.unique(np.round(individual_effects, 4)))
+        assert unique_effects > 1, "Expected some heterogeneity in treatment effects"
+
+    def test_causal_forest_robustness_to_data_issues(self, sample_dataset):
+        """Test causal forest robustness to common data issues."""
+        from src.causal_methods.causal_forest import CausalForest
+
+        # Test with outliers
+        data_with_outliers = sample_dataset.copy()
+        data_with_outliers.loc[0, 'age'] = 999
+        data_with_outliers.loc[1, 'income'] = 1e6
+
+        cf_outliers = CausalForest(data_with_outliers, random_state=42)
+        performance_outliers = cf_outliers.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['age', 'income', 'tech_savviness']
+        )
+
+        # Should complete without errors
+        assert cf_outliers.is_fitted
+        assert not np.isnan(performance_outliers['train_ate'])
+
+        # Test with constant features
+        data_with_constants = sample_dataset.copy()
+        data_with_constants['constant_feature'] = 42
+
+        cf_constants = CausalForest(data_with_constants, random_state=42)
+        performance_constants = cf_constants.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['age', 'constant_feature']
+        )
+
+        # Should handle constant features gracefully
+        assert cf_constants.is_fitted
+        assert not np.isnan(performance_constants['train_ate'])
+
+    def test_causal_forest_business_segments(self, sample_dataset):
+        """Test causal forest analysis for realistic business segments."""
+        from src.causal_methods.causal_forest import CausalForest
+
+        cf = CausalForest(sample_dataset, random_state=42)
+
+        cf.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['age', 'tech_savviness', 'sessions_2023', 'filed_2023']
+        )
+
+        # Test realistic business segments
+        business_segments = {
+            'High Value Customer': {
+                'sessions_2023': 15,
+                'filed_2023': 1,
+                'tech_savviness': 7
+            },
+            'New User': {
+                'filed_2023': 0,
+                'age': 35,
+                'tech_savviness': 5
+            },
+            'Senior User': {
+                'age': 65,
+                'tech_savviness': 3,
+                'filed_2023': 1
+            },
+            'Tech Savvy Young': {
+                'age': 28,
+                'tech_savviness': 9,
+                'sessions_2023': 12
+            }
+        }
+
+        segment_results = {}
+        for segment_name, features in business_segments.items():
+            result = cf.estimate_conditional_effects(features)
+            segment_results[segment_name] = result['conditional_treatment_effect']
+
+        # All segments should have valid effect estimates
+        for segment, effect in segment_results.items():
+            assert isinstance(effect, int | float)
+            assert not np.isnan(effect)
+            assert -1 <= effect <= 1, f"Effect for {segment} seems unrealistic: {effect}"
+
+    def test_causal_forest_visualization_integration(self, sample_dataset):
+        """Test that causal forest visualizations work end-to-end."""
+        import matplotlib.pyplot as plt
+
+        from src.causal_methods.causal_forest import CausalForest
+
+        # Set up matplotlib for testing
+        plt.ioff()
+
+        try:
+            cf = CausalForest(sample_dataset, random_state=42)
+
+            cf.fit_causal_forest(
+                outcome_col='filed_2024',
+                treatment_col='used_smart_assistant',
+                covariate_cols=['age', 'tech_savviness', 'filed_2023']
+            )
+
+            # Test treatment effect distribution plot
+            try:
+                cf.plot_treatment_effect_distribution(bins=15, figsize=(10, 6))
+                # If we get here without exception, the test passes
+                visualization_1_success = True
+            except Exception as e:
+                pytest.fail(f"plot_treatment_effect_distribution raised an exception: {e}")
+
+            # Test feature importance plot
+            try:
+                cf.plot_feature_importance(top_n=3, figsize=(8, 5))
+                # If we get here without exception, the test passes
+                visualization_2_success = True
+            except Exception as e:
+                pytest.fail(f"plot_feature_importance raised an exception: {e}")
+
+            # Both visualizations should succeed
+            assert visualization_1_success and visualization_2_success
+
+        finally:
+            plt.close('all')
+
+    def test_causal_forest_summary_report_integration(self, sample_dataset):
+        """Test causal forest summary report generation with real data."""
+        from src.causal_methods.causal_forest import CausalForest
+
+        cf = CausalForest(sample_dataset, random_state=42)
+
+        cf.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['age', 'tech_savviness', 'filed_2023', 'sessions_2023']
+        )
+
+        # Generate report
+        report = cf.generate_summary_report()
+
+        # Check report content
+        assert isinstance(report, str)
+        assert len(report) > 0
+
+        # Should contain key business insights
+        required_sections = [
+            "CAUSAL FOREST ANALYSIS REPORT",
+            "Average Treatment Effect",
+            "HETEROGENEITY ANALYSIS",
+            "TOP FEATURES",
+            "BUSINESS RECOMMENDATIONS"
+        ]
+
+        for section in required_sections:
+            assert section in report, f"Missing section: {section}"
+
+        # Should contain actual values from the analysis
+        ate = cf.treatment_effects['ate']
+        assert f"{ate:.4f}" in report, "ATE value should appear in report"
+
+        # Should contain feature names
+        top_feature = cf.feature_importance['feature_names'][cf.feature_importance['sorted_indices'][0]]
+        assert top_feature in report, "Top feature should be mentioned in report"
