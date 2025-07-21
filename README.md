@@ -31,9 +31,13 @@ causal-methods-demo/
 ├── config/
 │   ├── simulation_config.yaml         # Main configuration file
 │   ├── scenario_high_treatment.yaml   # High treatment effect scenario
-│   └── scenario_low_adoption.yaml     # Low adoption rate scenario
+│   ├── scenario_low_adoption.yaml     # Low adoption rate scenario
+│   └── README.md                      # Configuration system overview
 ├── data/
 │   └── simulated_users.csv
+├── docs/
+│   ├── README.md                      # Documentation index
+│   └── configuration_parameters.md    # Complete parameter reference
 ├── notebooks/
 │   ├── 00_generate_data.ipynb
 │   ├── 01_did_tax.ipynb
@@ -83,6 +87,11 @@ The dataset includes:
 - **`config/simulation_config.yaml`** - Main configuration with all parameters
 - **`config/scenario_high_treatment.yaml`** - High treatment effect scenario
 - **`config/scenario_low_adoption.yaml`** - Low adoption rate scenario
+
+### Documentation
+- **`docs/configuration_parameters.md`** - Complete parameter reference guide
+- **`config/README.md`** - Configuration system overview
+- **`docs/README.md`** - Documentation index and navigation
 
 ### Benefits
 - 🚫 **No magic numbers** - All parameters externalized
