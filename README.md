@@ -13,11 +13,15 @@ causal_methods_demo/
 ├── src/
 │   ├── causal_methods/
 │   │   ├── did.py              # Difference-in-Differences implementation
-│   │   └── psm.py              # Propensity Score Matching implementation
+│   │   ├── psm.py              # Propensity Score Matching implementation
+│   │   ├── dml.py              # Double Machine Learning implementation
+│   │   └── cuped.py            # CUPED implementation
 │   └── data_simulation.py      # Synthetic data generation
 ├── notebooks/
 │   ├── 01_did_tax.ipynb       # DiD demonstration notebook
-│   └── 02_psm_tax.ipynb       # PSM demonstration notebook
+│   ├── 02_psm_tax.ipynb       # PSM demonstration notebook
+│   ├── 03_dml_tax.ipynb       # DML demonstration notebook
+│   └── 04_cuped_tax.ipynb     # CUPED demonstration notebook
 ├── tests/                      # Comprehensive test suite
 ├── config/                     # Configuration files
 └── docs/                       # Documentation
@@ -74,7 +78,7 @@ causal_methods_demo/
 
 ## 🚀 Quick Start
 
-### Double Machine Learning with Information Criteria
+### 1. Double Machine Learning with Information Criteria
 ```python
 from src.causal_methods.dml import DoubleMachineLearning
 
@@ -114,7 +118,7 @@ report = dml.generate_summary_report('revenue')
 print(report)
 ```
 
-### CUPED for Randomized Experiments
+### 2. CUPED for Randomized Experiments
 ```python
 from src.causal_methods.cuped import CUPED
 
@@ -136,7 +140,7 @@ print(f"SE reduction: {results['summary']['se_reduction']:.1%}")
 fig = cuped.plot_cuped_comparison('conversion_rate', 'treatment_group')
 ```
 
-### Propensity Score Matching
+### 3. Propensity Score Matching
 ```python
 from src.causal_methods.psm import PropensityScoreMatching
 
@@ -159,6 +163,38 @@ effects = psm.estimate_treatment_effects(outcome_cols='outcome')
 
 print(f"ATE: {effects['outcome']['ate']:.4f}")
 print(f"Matching rate: {matching_results['matching_rate']:.1%}")
+```
+
+### 4. Difference-in-Differences
+```python
+from src.causal_methods.did import DifferenceInDifferences
+
+# Initialize DiD
+did = DifferenceInDifferences(data)
+
+# Prepare panel data
+panel_df = did.prepare_panel_data(
+    treatment_col='used_smart_assistant',
+    outcome_2023_col='filed_2023',
+    outcome_2024_col='filed_2024'
+)
+
+# Estimate DiD effects with controls
+results = did.estimate_did(
+    control_vars=['age', 'tech_savviness'],
+    cluster_se=True
+)
+
+print(f"DiD Effect: {results['did_estimate']:.4f}")
+print(f"P-value: {results['p_value']:.4f}")
+print(f"95% CI: [{results['conf_int_lower']:.4f}, {results['conf_int_upper']:.4f}]")
+
+# Test parallel trends assumption
+trends_test = did.parallel_trends_test()
+print(f"Parallel trends check: {trends_test['interpretation']}")
+
+# Visualize parallel trends
+fig = did.plot_parallel_trends()
 ```
 
 ## 🔬 Information Criteria in Model Selection
@@ -206,7 +242,7 @@ print(f"BIC Range: [{comparison['bic'].min():.2f}, {comparison['bic'].max():.2f}
 ## 🧪 Testing & Quality Assurance
 
 ### Comprehensive Test Suite
-- **130+ unit tests** covering all methods and edge cases
+- **100+ unit tests** covering all methods and edge cases
 - **Integration tests** comparing methods on same datasets  
 - **Edge case handling**: Small samples, perfect separation, missing data
 - **Continuous integration** with pytest and quality checks
@@ -221,4 +257,4 @@ print(f"BIC Range: [{comparison['bic'].min():.2f}, {comparison['bic'].max():.2f}
 - ✅ **DML**: Treatment effects, multiple outcomes, model comparison, information criteria, cross-fitting
 - ✅ **CUPED**: Variance reduction, covariate balance, binary/continuous outcomes  
 - ✅ **PSM**: Propensity scores, matching algorithms, balance assessment
-- ✅ **DiD**: Panel data, parallel trends, clustering 
+- ✅ **DiD**: Panel data, parallel trends, clustering, heterogeneous effects 
