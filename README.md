@@ -1,6 +1,6 @@
 # Causal Methods Demo
 
-A comprehensive toolkit demonstrating various causal inference methods for business analytics and decision-making. This project showcases practical implementations of **Propensity Score Matching (PSM)**, **Double Machine Learning (DML)**, **CUPED**, **Difference-in-Differences (DiD)**, and **Synthetic Control** methods using synthetic tax software data.
+A comprehensive toolkit demonstrating various causal inference methods for business analytics and decision-making. This project showcases practical implementations of **Propensity Score Matching (PSM)**, **Double Machine Learning (DML)**, **CUPED**, **Difference-in-Differences (DiD)**, **Synthetic Control**, and **Causal Forest** methods using synthetic tax software data.
 
 ## 🎯 **Project Overview**
 
@@ -13,6 +13,7 @@ This repository provides production-ready implementations of modern causal infer
 | **CUPED** | Randomized experiments | Reduces variance | A/B tests with pre-treatment data |
 | **DiD** | Policy evaluation | Controls for time trends | Before/after intervention data |
 | **Synthetic Control** | Individual effects | Transparent matching, no parametric assumptions | Rich pre-treatment data, individual-level effects |
+| **Causal Forest** | Heterogeneous effects | Personalized treatment effects | Rich covariates, segment-specific insights |
 
 ## 📊 **Business Context: Smart Filing Assistant Impact**
 
