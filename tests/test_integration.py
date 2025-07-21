@@ -969,3 +969,83 @@ class TestMethodComparison:
         
         # Variance reduction should be non-negative in most cases
         assert results['summary']['variance_reduction'] >= -0.1
+
+    # Synthetic Control integration tests
+    def test_synthetic_control_integration(self, sample_dataset):
+        """Test complete synthetic control workflow with real data structure."""
+        from src.causal_methods.synthetic_control import SyntheticControl
+        
+        sc = SyntheticControl(sample_dataset, random_state=42)
+        
+        # Test construction with available predictors
+        results = sc.construct_synthetic_controls(
+            unit_id_col='user_id',
+            treatment_col='used_smart_assistant',
+            outcome_pre_col='filed_2023',
+            outcome_post_col='filed_2024',
+            predictor_cols=['filed_2023', 'age', 'tech_savviness']
+        )
+        
+        # Verify results structure
+        assert 'average_treatment_effect' in results
+        assert 'individual_results' in results
+        assert 'ate_std_error' in results
+        
+        # Verify individual results DataFrame
+        individual_df = results['individual_results']
+        assert len(individual_df) > 0
+        assert 'treatment_effect' in individual_df.columns
+        assert 'pre_treatment_error' in individual_df.columns
+        
+        # Test placebo testing
+        placebo_results = sc.estimate_statistical_significance(n_placebo=5)
+        assert 'p_value' in placebo_results
+        assert 0 <= placebo_results['p_value'] <= 1
+        
+        # Test report generation
+        report = sc.generate_summary_report()
+        assert isinstance(report, str)
+        assert len(report) > 0
+    
+    def test_synthetic_control_quality_assessment(self, sample_dataset):
+        """Test synthetic control quality metrics."""
+        from src.causal_methods.synthetic_control import SyntheticControl
+        
+        sc = SyntheticControl(sample_dataset, random_state=42)
+        results = sc.construct_synthetic_controls()
+        
+        # Quality metrics should be reasonable
+        assert 'average_pre_treatment_error' in results
+        assert 'weight_concentration' in results
+        
+        # Pre-treatment error should be non-negative
+        assert results['average_pre_treatment_error'] >= 0
+        
+        # Weight concentration should be between 0 and 1
+        assert 0 <= results['weight_concentration'] <= 1
+        
+        # Check that weights are stored properly
+        assert len(sc.synthetic_weights) > 0
+        
+        # Each set of weights should sum to 1
+        for unit_id, weights in sc.synthetic_weights.items():
+            assert abs(weights.sum() - 1.0) < 1e-6
+            assert all(w >= 0 for w in weights)
+    
+    def test_synthetic_control_with_missing_data(self, sample_dataset):
+        """Test synthetic control robustness with missing data."""
+        from src.causal_methods.synthetic_control import SyntheticControl
+        
+        # Introduce some missing values
+        modified_data = sample_dataset.copy()
+        modified_data.loc[0, 'age'] = np.nan
+        modified_data.loc[1, 'tech_savviness'] = np.nan
+        
+        sc = SyntheticControl(modified_data, random_state=42)
+        
+        # Should handle missing values gracefully
+        with pytest.warns(UserWarning, match="Missing values detected"):
+            results = sc.construct_synthetic_controls()
+        
+        assert 'average_treatment_effect' in results
+        assert results['average_treatment_effect'] is not None

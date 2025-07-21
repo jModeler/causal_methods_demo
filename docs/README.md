@@ -1,238 +1,210 @@
-# Documentation Index
+# Causal Methods Documentation
 
-Welcome to the Causal Methods Demo documentation! This directory contains comprehensive guides and references for all causal inference methods implemented in this project.
+Comprehensive guides for understanding and applying causal inference methods in business contexts.
 
-## 📚 Available Documentation
+## 📚 **Method Guides**
 
-### 🎯 **Core Guides**
+### 🎯 **[Propensity Score Matching (PSM)](psm_guide.md)**
+- **Use Case**: Observational studies with rich covariates
+- **Strengths**: Balances observed confounders, intuitive matching process
+- **Business Application**: User segmentation, feature impact analysis
+- **Key Features**: Multiple matching algorithms, automated balance assessment
 
-#### **[Configuration Parameters](configuration_parameters.md)**
-Comprehensive guide to all simulation parameters used in the synthetic data generation system. Covers demographics, treatment assignment, outcome modeling, and scenario configurations.
+### 🤖 **[Double Machine Learning (DML)](dml_guide.md)**
+- **Use Case**: High-dimensional data with complex relationships
+- **Strengths**: Robust to model misspecification, handles many variables
+- **Business Application**: A/B test enhancement, customer lifetime value analysis
+- **Key Features**: Cross-fitting, multiple ML algorithms, information criteria
 
-**Contents:**
-- Parameter types and default values
-- Business rationale and usage examples
-- Scenario design principles
-- YAML configuration structure
+### 📈 **[CUPED (Controlled-experiment Using Pre-Experiment Data)](cuped_guide.md)**
+- **Use Case**: Randomized experiments with pre-treatment data
+- **Strengths**: Variance reduction while preserving unbiasedness
+- **Business Application**: A/B test enhancement, experimental power improvement
+- **Key Features**: Optimal adjustment coefficients, substantial precision gains
 
-### 🔬 **Method Documentation**
+### 📊 **[Difference-in-Differences (DiD)](did_guide.md)**
+- **Use Case**: Policy evaluation with before/after structure
+- **Strengths**: Controls for time-invariant confounders
+- **Business Application**: Feature rollouts, policy changes, natural experiments
+- **Key Features**: Parallel trends testing, panel data handling
 
-#### **Propensity Score Matching (PSM)** 
-- **Comprehensive Guide**: **[PSM Method Guide](psm_guide.md)** - Theory, implementation, and best practices
-- **Notebook**: [`notebooks/02_psm_tax.ipynb`](../notebooks/02_psm_tax.ipynb)
-- **Implementation**: [`src/causal_methods/psm.py`](../src/causal_methods/psm.py)
+### ⚖️ **[Synthetic Control](synthetic_control_guide.md)**
+- **Use Case**: Individual-level effects with rich pre-treatment data
+- **Strengths**: Transparent matching, no parametric assumptions
+- **Business Application**: Targeted interventions, segment-specific analysis
+- **Key Features**: Individual treatment effects, quality diagnostics, placebo testing
 
-**What you'll learn:**
-- PSM theory and methodology
-- Step-by-step implementation guide
-- Covariate balance assessment
-- Treatment effect estimation
-- Statistical significance testing
-- Comparison with naive estimates
-- Best practices and limitations
+## 🔍 **Method Selection Framework**
 
-**Key Features Covered:**
-- Multiple matching algorithms (nearest neighbor, caliper)
-- Automated balance diagnostics
-- Rich visualizations (propensity distributions, balance plots)
-- Proper statistical tests for binary outcomes
-- Sensitivity analysis and robustness checks
+### **Data-Driven Method Selection**
 
-#### **Double Machine Learning (DML)** ✨ *Enhanced with Information Criteria!*
-- **Comprehensive Guide**: **[DML Method Guide](dml_guide.md)** - Advanced causal ML with model selection
-- **Notebook**: [`notebooks/03_dml_tax.ipynb`](../notebooks/03_dml_tax.ipynb)
-- **Implementation**: [`src/causal_methods/dml.py`](../src/causal_methods/dml.py)
+| Data Characteristics | Recommended Method | Alternative Options |
+|---------------------|-------------------|-------------------|
+| **Randomized Experiment** | CUPED | DML (if high-dimensional) |
+| **Observational + Rich Covariates** | PSM → DML | Synthetic Control |
+| **Before/After + Panel Data** | DiD | Synthetic Control |
+| **High-Dimensional Covariates** | DML | PSM with ML propensity scores |
+| **Individual-Level Effects Needed** | Synthetic Control | DML |
+| **Limited Pre-treatment Data** | PSM | DiD (if temporal structure) |
 
-**What you'll learn:**
-- DML theory and cross-fitting methodology
-- Information criteria for model selection (AIC, BIC)
-- Multiple ML algorithms integration
-- Robust inference and statistical testing
-- Model performance diagnostics
-- Business impact assessment
+### **Business Context Method Selection**
 
-**Key Features Covered:**
-- Cross-fitting with K-fold sample splitting
-- Multiple ML models (Random Forest, Gradient Boosting, Linear)
-- Information criteria-based model selection
-- Influence function-based standard errors
-- Comprehensive diagnostic visualizations
-- Treatment effect heterogeneity analysis
+| Business Question | Primary Method | Secondary Method | Rationale |
+|------------------|----------------|------------------|-----------|
+| **"Does our A/B test show real impact?"** | CUPED | DML | Reduce variance in experiments |
+| **"What's the effect on different user segments?"** | Synthetic Control | PSM | Individual-level heterogeneity |
+| **"Did our feature rollout work?"** | DiD | Synthetic Control | Natural experiment design |
+| **"How do we control for many confounders?"** | DML | PSM | Handle high-dimensional data |
+| **"Which users benefit most from treatment?"** | Synthetic Control | DML | Transparent individual effects |
 
-#### **CUPED (Controlled-experiment Using Pre-Experiment Data)** ✨ *Variance Reduction for A/B Tests*
-- **Comprehensive Guide**: **[CUPED Method Guide](cuped_guide.md)** - Precision improvement for experiments
-- **Notebook**: [`notebooks/04_cuped_tax.ipynb`](../notebooks/04_cuped_tax.ipynb)
-- **Implementation**: [`src/causal_methods/cuped.py`](../src/causal_methods/cuped.py)
+### **Sample Size Considerations**
 
-**What you'll learn:**
-- CUPED theory and variance reduction principles
-- Optimal adjustment coefficient estimation
-- Pre-experiment covariate selection
-- Statistical power improvement
-- A/B testing enhancement strategies
-- Business impact measurement
+| Sample Size | Recommended Methods | Avoid |
+|-------------|-------------------|-------|
+| **Small (< 500)** | PSM, DiD | DML (needs cross-fitting) |
+| **Medium (500-5000)** | All methods suitable | None |
+| **Large (> 5000)** | All methods excel | None (all benefit from larger samples) |
 
-**Key Features Covered:**
-- Multiple regression adjustment methods (OLS, Ridge, Lasso)
-- Covariate balance checking for randomized experiments
-- Comprehensive comparison visualizations
-- Statistical power and precision analysis
-- Cost-effective experiment design
-- Integration with A/B testing platforms
+## 📖 **Learning Path Recommendations**
 
-#### **Difference-in-Differences (DiD)** ✨ *New!*
-- **Comprehensive Guide**: **[DiD Method Guide](did_guide.md)** - Panel data causal inference
-- **Notebook**: [`notebooks/01_did_tax.ipynb`](../notebooks/01_did_tax.ipynb)
-- **Implementation**: [`src/causal_methods/did.py`](../src/causal_methods/did.py)
+### **🔰 Beginner Path: Foundations First**
+1. **Start**: [DiD Guide](did_guide.md) - Learn causal thinking fundamentals
+2. **Next**: [PSM Guide](psm_guide.md) - Understand confounders and matching
+3. **Then**: [CUPED Guide](cuped_guide.md) - See how to improve experiments
 
-**What you'll learn:**
-- DiD theory and parallel trends assumption
-- Panel data preparation and reshaping
-- Treatment timing exploitation
-- Parallel trends testing and validation
-- Heterogeneous treatment effects
-- Policy evaluation applications
+### **📊 Intermediate Path: Method Mastery**
+4. **Advanced**: [DML Guide](dml_guide.md) - Master ML for causal inference
+5. **Specialized**: [Synthetic Control Guide](synthetic_control_guide.md) - Individual-level effects
 
-**Key Features Covered:**
-- Automatic panel data preparation
-- Robust standard errors with clustering
-- Parallel trends visualization and testing
-- Subgroup effect analysis
-- Missing data handling
-- Business impact translation
+### **🏢 Business Analyst Path**
+1. **Quick Start**: [CUPED Guide](cuped_guide.md) - Immediate A/B test improvements
+2. **Core Method**: [PSM Guide](psm_guide.md) - Most commonly applicable
+3. **Advanced**: [DML Guide](dml_guide.md) - Handle complex business data
 
-### 🛠️ **Technical References**
+### **🎓 Data Scientist Path**
+1. **Foundation**: [DiD Guide](did_guide.md) - Causal inference principles
+2. **ML Integration**: [DML Guide](dml_guide.md) - Combine ML with causal inference
+3. **Individual Effects**: [Synthetic Control Guide](synthetic_control_guide.md) - Advanced heterogeneity analysis
 
-#### **API Documentation**
-- **[PSM API](../src/causal_methods/psm.py)**: Complete PropensityScoreMatching class reference
-- **[DML API](../src/causal_methods/dml.py)**: DoubleMachineLearning class reference
-- **[CUPED API](../src/causal_methods/cuped.py)**: CUPED class reference
-- **[DiD API](../src/causal_methods/did.py)**: DifferenceInDifferences class reference  
-- **[Data Simulation API](../src/data_simulation.py)**: TaxSoftwareDataSimulator class reference
+## 🔬 **Method Comparison Matrix**
 
-#### **Testing Documentation**
-- **Test Coverage**: 90%+ overall with comprehensive test suite
-- **Test Structure**: Unit tests, integration tests, edge case coverage
-- **Running Tests**: `uv run pytest tests/ --cov=src --cov-report=term-missing`
+| Aspect | PSM | DML | CUPED | DiD | Synthetic Control |
+|--------|-----|-----|-------|-----|------------------|
+| **Complexity** | Low | High | Medium | Medium | Medium |
+| **Assumptions** | Strong | Medium | Minimal | Strong | Medium |
+| **Data Requirements** | Moderate | High | Minimal | Panel | Rich Pre-data |
+| **Individual Effects** | ✅ | ✅ | ❌ | ❌ | ✅ |
+| **Transparency** | High | Low | High | High | High |
+| **Business Interpretability** | High | Medium | High | High | High |
 
-### 📊 **Data and Configuration**
+### **Assumption Strength Guide**
 
-#### **Scenario Explanations**
-Understanding the different data generation scenarios:
+- **Minimal**: Few strong assumptions (CUPED)
+- **Medium**: Moderate assumptions, testable (DML, Synthetic Control)
+- **Strong**: Several critical assumptions (PSM, DiD)
 
-1. **Baseline Scenario** (`config/simulation_config.yaml`)
-   - Standard treatment adoption rates (60-70%)
-   - Moderate treatment effects
-   - Balanced user demographics
+### **Data Requirement Details**
 
-2. **High Treatment Scenario** (`config/scenario_high_treatment.yaml`)
-   - Enhanced treatment effects
-   - Higher smart assistant impact
-   - Optimistic business case
+- **Minimal**: Can work with basic experimental data (CUPED)
+- **Moderate**: Needs good set of observed confounders (PSM)
+- **High**: Requires many variables or specific structure (DML)
+- **Panel**: Needs multiple time periods (DiD)
+- **Rich Pre-data**: Needs multiple relevant pre-treatment predictors (Synthetic Control)
 
-3. **Low Adoption Scenario** (`config/scenario_low_adoption.yaml`)
-   - Reduced treatment adoption (40-50%)
-   - Lower engagement rates
-   - Conservative business case
+## 🎯 **Quick Reference Cards**
 
-### 🎓 **Learning Path**
+### **Method Selection Decision Tree**
 
-#### **For Beginners**
-1. Start with **[Configuration Parameters](configuration_parameters.md)** to understand the data
-2. Choose your causal inference method:
-   - **Randomized experiments?** → Start with **[CUPED Guide](cuped_guide.md)**
-   - **Observational data?** → Start with **[PSM Guide](psm_guide.md)**
-   - **Panel/time series data?** → Start with **[DiD Guide](did_guide.md)**
-   - **Complex/High-dimensional?** → Start with **[DML Guide](dml_guide.md)**
-3. Run the corresponding notebook for hands-on practice
-4. Experiment with different scenarios in the config files
+```
+Is this a randomized experiment?
+├─ YES → CUPED (enhance precision)
+└─ NO → Do you have rich pre-treatment data?
+    ├─ YES → Do you need individual effects?
+    │   ├─ YES → Synthetic Control
+    │   └─ NO → Do you have high-dimensional data?
+    │       ├─ YES → DML
+    │       └─ NO → PSM
+    └─ NO → Do you have before/after data?
+        ├─ YES → DiD
+        └─ NO → PSM (with available confounders)
+```
 
-#### **For Advanced Users**
-1. Review all **method guides** for comprehensive understanding
-2. Examine the **API documentation** for method customization
-3. Study the **test suite** for edge case handling and best practices
-4. Integrate multiple methods for robust causal inference
-5. Extend the implementations with custom functionality
+### **Quality Assessment Checklist**
 
-#### **Method Selection Guide**
-Choose the right method for your use case:
+#### **For All Methods:**
+- [ ] **Assumption plausibility**: Are key assumptions reasonable?
+- [ ] **Balance/fit quality**: Do treated and control groups match well?
+- [ ] **Statistical significance**: Is the effect statistically reliable?
+- [ ] **Business significance**: Is the effect size meaningful?
+- [ ] **Robustness**: Consistent across different specifications?
 
-| **Data Type** | **Best Method** | **Alternative** | **Use When** |
-|---------------|-----------------|-----------------|---------------|
-| Randomized Experiment | **CUPED** | DML | Want to reduce variance and increase precision |
-| Cross-sectional Observational | **PSM** | DML | Need to match similar units |
-| Panel/Longitudinal | **DiD** | DML | Have before/after periods |
-| Complex/High-dimensional | **DML** | PSM + DiD | Many covariates or non-linear relationships |
+#### **Method-Specific Checks:**
+- **PSM**: [ ] Propensity score overlap, [ ] Covariate balance
+- **DML**: [ ] Model performance, [ ] Cross-fitting convergence
+- **CUPED**: [ ] Covariate correlation, [ ] Variance reduction achieved
+- **DiD**: [ ] Parallel trends, [ ] No anticipation effects
+- **Synthetic Control**: [ ] Pre-treatment fit, [ ] Weight concentration
 
-### 🔧 **Development Guide**
+## 💼 **Business Implementation Guidelines**
 
-#### **Adding New Documentation**
-1. Create markdown files in this `docs/` directory
-2. Update this index with links and descriptions
-3. Include practical examples and code snippets
-4. Cross-reference with relevant notebooks and implementations
+### **Stakeholder Communication**
 
-#### **Documentation Standards**
-- Use clear headings and structure
-- Include practical examples and business context
-- Reference theoretical background
-- Provide troubleshooting guidance
-- Link to relevant code sections
+| Method | Executive Summary | Technical Detail Level |
+|--------|------------------|----------------------|
+| **PSM** | "Matched similar users for fair comparison" | Medium - intuitive matching |
+| **DML** | "Used AI to control for complex factors" | High - requires ML explanation |
+| **CUPED** | "Improved A/B test precision using history" | Low - straightforward concept |
+| **DiD** | "Compared before/after trends" | Medium - requires trend explanation |
+| **Synthetic Control** | "Built artificial control groups" | Medium - intuitive but detailed |
 
-### 📈 **Recent Updates**
+### **Resource Requirements**
 
-#### **Version 3.0** (Current)
-- ✅ **Complete Method Coverage**: PSM, DML, CUPED, and DiD implementations
-- ✅ **Enhanced Documentation**: Comprehensive guides for all methods
-- ✅ **Information Criteria Integration**: AIC/BIC model selection for DML
-- ✅ **Variance Reduction**: CUPED for experiment precision improvement
-- ✅ **Panel Data Analysis**: DiD for temporal causal inference
-- ✅ **Business Translation**: Practical impact assessment tools
-- ✅ **Test Coverage**: Robust testing across all methods
+| Method | Data Collection | Analysis Time | Expertise Level |
+|--------|----------------|--------------|----------------|
+| **PSM** | Moderate | Fast | Intermediate |
+| **DML** | High | Medium | Advanced |
+| **CUPED** | Low | Fast | Beginner |
+| **DiD** | Medium | Medium | Intermediate |
+| **Synthetic Control** | High | Medium | Intermediate |
 
-#### **Key Innovations**
-- **Information Criteria Model Selection**: Move beyond R² to principled model choice
-- **Integrated Workflow**: Seamless combination of multiple causal methods
-- **Business Focus**: Translate statistical results to actionable insights
-- **Robustness**: Comprehensive error handling and edge case management
+### **Implementation Timeline**
 
-### 🤝 **Contributing to Documentation**
+- **Immediate (1-2 weeks)**: CUPED for existing A/B tests
+- **Short-term (1 month)**: PSM for observational analysis
+- **Medium-term (2-3 months)**: DiD for policy evaluations
+- **Long-term (3-6 months)**: DML and Synthetic Control for advanced analysis
 
-We welcome contributions to improve and expand this documentation:
+## 🎓 **Additional Resources**
 
-1. **Fix Issues**: Correct errors or clarify confusing sections
-2. **Add Examples**: Provide more practical use cases and business applications
-3. **Expand Coverage**: Document advanced techniques or new methods
-4. **Improve Structure**: Better organization and cross-referencing
+### **Academic References**
+- **PSM**: Rosenbaum & Rubin (1983), Austin (2011)
+- **DML**: Chernozhukov et al. (2018), Athey & Imbens (2019)
+- **CUPED**: Deng et al. (2013), Zhao et al. (2019)
+- **DiD**: Angrist & Pischke (2009), Cunningham (2021)
+- **Synthetic Control**: Abadie et al. (2010), Arkhangelsky et al. (2021)
 
-### 📞 **Getting Help**
+### **Software Ecosystems**
+- **Python**: This repository, EconML, DoWhy
+- **R**: MatchIt, grf, did, Synth
+- **Commercial**: Stata, SAS
 
-If you need assistance:
-1. Check the relevant **method guide** for comprehensive theory and examples
-2. Run the corresponding **notebook** for step-by-step demonstrations
-3. Review the **API documentation** for method parameters and options
-4. Examine the **test files** for usage patterns and edge cases
-5. Create an issue for bugs or feature requests
-
-### 🏆 **Best Practices Summary**
-
-#### **For Reliable Causal Inference:**
-1. **Understand your data structure** - Use the configuration guide
-2. **Choose the right method** - Follow the method selection guide
-3. **Validate assumptions** - Use diagnostic tools in each method
-4. **Check robustness** - Try multiple methods when possible
-5. **Interpret carefully** - Use business translation tools
-6. **Document thoroughly** - Record your analysis decisions
-
-#### **For Business Impact:**
-1. **Define clear outcomes** - Measure what matters to business
-2. **Quantify uncertainty** - Report confidence intervals, not just point estimates
-3. **Translate to business metrics** - Connect statistical results to ROI
-4. **Consider practical significance** - Statistical ≠ business significance
-5. **Plan for action** - Design analysis to inform decisions
+### **Professional Development**
+- **Courses**: MIT 14.387, Stanford CS229T, Coursera Causal Inference
+- **Books**: "Causal Inference: The Mixtape", "Mostly Harmless Econometrics"
+- **Conferences**: NBER Methods, ICML Causal Inference Workshop
 
 ---
 
-**Happy Learning!** 🎉
+## 🚀 **Getting Started**
 
-This documentation is designed to help you master causal inference methods and apply them effectively to real-world business problems. Each method has its strengths - choose the right tool for your specific use case and data structure. 
+1. **Choose your learning path** based on your background and needs
+2. **Read the relevant method guide** for detailed implementation
+3. **Try the Jupyter notebooks** for hands-on experience
+4. **Apply to your business problem** with appropriate method selection
+5. **Validate results** using quality assessment checklists
+
+**📧 Questions?** Check the individual method guides for detailed implementation examples and troubleshooting tips.
+
+---
+
+**🎯 This documentation provides everything you need to implement rigorous causal inference methods for business decision-making.** 
