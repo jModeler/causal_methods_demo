@@ -19,9 +19,35 @@ from datetime import datetime, timedelta
 import os
 
 
+def merge_configs(base_config: Dict, override_config: Dict) -> Dict:
+    """
+    Merge configuration dictionaries, with override_config taking precedence.
+    
+    Args:
+        base_config: Base configuration dictionary
+        override_config: Override configuration dictionary
+        
+    Returns:
+        Merged configuration dictionary
+    """
+    import copy
+    
+    merged = copy.deepcopy(base_config)
+    
+    def recursive_merge(base_dict, override_dict):
+        for key, value in override_dict.items():
+            if key in base_dict and isinstance(base_dict[key], dict) and isinstance(value, dict):
+                recursive_merge(base_dict[key], value)
+            else:
+                base_dict[key] = value
+    
+    recursive_merge(merged, override_config)
+    return merged
+
+
 def load_config(config_path: str = "config/simulation_config.yaml") -> Dict:
     """
-    Load simulation configuration from YAML file.
+    Load simulation configuration from YAML file with inheritance support.
     
     Args:
         config_path: Path to the YAML configuration file
@@ -34,6 +60,14 @@ def load_config(config_path: str = "config/simulation_config.yaml") -> Dict:
     
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
+    
+    # If this is not the base config, merge with base config
+    if 'simulation_config.yaml' not in config_path:
+        base_config_path = os.path.join(os.path.dirname(config_path), 'simulation_config.yaml')
+        if os.path.exists(base_config_path):
+            with open(base_config_path, 'r') as base_file:
+                base_config = yaml.safe_load(base_file)
+            config = merge_configs(base_config, config)
     
     return config
 

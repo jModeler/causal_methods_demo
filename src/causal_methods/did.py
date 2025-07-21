@@ -102,6 +102,13 @@ class DifferenceInDifferences:
             long_data.append(obs_2024)
         
         panel_df = pd.DataFrame(long_data)
+        
+        # Ensure boolean columns are converted to integers for statsmodels
+        bool_cols = ['post_treatment', 'treated', 'outcome', 'treatment_x_post']
+        for col in bool_cols:
+            if col in panel_df.columns:
+                panel_df[col] = panel_df[col].astype(int)
+        
         self.panel_data = panel_df
         return panel_df
     

@@ -1,0 +1,54 @@
+# High Treatment Effect Scenario Configuration
+# This scenario shows stronger treatment effects for sensitivity analysis
+
+# Inherit most settings from base config, override key parameters
+simulation:
+  random_seed: 123  # Different seed for variation
+  default_n_users: 10000
+
+# Enhanced treatment effects for this scenario
+outcomes_2024:
+  filing:
+    base_rate: 0.72
+    treatment_effects:
+      base_effect: 0.15  # 15 percentage points (much higher)
+      low_tech_boost: 0.08
+      high_tech_reduction: -0.01  # Minimal reduction
+      older_user_boost: 0.05
+      new_user_boost: 0.06
+    filed_2023_boost: 0.15
+    apply_demographic_effects: true
+    max_probability: 0.95
+  
+  # More dramatic time improvements
+  time_to_complete:
+    treatment_time_reduction:
+      min_reduction: 0.25  # 25% reduction
+      max_reduction: 0.40  # 40% reduction
+    std: 20
+    min_time: 20
+  
+  # Better session improvements
+  sessions:
+    treatment_session_reduction:
+      min_reduction: 0.20  # 20% reduction
+      max_reduction: 0.45  # 45% reduction
+  
+  # Even better support reduction
+  support_tickets:
+    base_rate: 0.12
+    filed_2023_penalty: 0.05
+    treatment_reduction: 0.4  # 60% reduction
+  
+  # Higher satisfaction boost
+  satisfaction:
+    base_score: 7.2
+    treatment_boost: 1.2  # Larger boost
+    high_tech_boost: 0.3
+    support_history_penalty: -0.5
+    std: 1.2
+    min_score: 1
+    max_score: 10
+
+# All other parameters inherit from base config
+# This demonstrates how to create scenario variations 
