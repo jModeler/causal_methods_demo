@@ -25,11 +25,19 @@ We demonstrate several causal inference methods:
 ## 🗂️ Repository Structure
 
 ```
-causal-impact-tax-software/
+causal-methods-demo/
 ├── README.md
 ├── pyproject.toml
+├── config/
+│   ├── simulation_config.yaml         # Main configuration file
+│   ├── scenario_high_treatment.yaml   # High treatment effect scenario
+│   ├── scenario_low_adoption.yaml     # Low adoption rate scenario
+│   └── README.md                      # Configuration system overview
 ├── data/
 │   └── simulated_users.csv
+├── docs/
+│   ├── README.md                      # Documentation index
+│   └── configuration_parameters.md    # Complete parameter reference
 ├── notebooks/
 │   ├── 00_generate_data.ipynb
 │   ├── 01_did_tax.ipynb
@@ -70,6 +78,51 @@ The dataset includes:
 - Conversion rates (filed taxes)
 - Completion time and number of sessions
 - Support tickets and satisfaction scores
+
+## ⚙️ Configuration System
+
+**NEW**: All simulation parameters are now configurable via YAML files!
+
+### Configuration Files
+- **`config/simulation_config.yaml`** - Main configuration with all parameters
+- **`config/scenario_high_treatment.yaml`** - High treatment effect scenario
+- **`config/scenario_low_adoption.yaml`** - Low adoption rate scenario
+
+### Documentation
+- **`docs/configuration_parameters.md`** - Complete parameter reference guide
+- **`config/README.md`** - Configuration system overview
+- **`docs/README.md`** - Documentation index and navigation
+
+### Benefits
+- 🚫 **No magic numbers** - All parameters externalized
+- 🔬 **Easy experimentation** - Change parameters without code changes
+- 📊 **Multiple scenarios** - Compare different assumptions
+- 📝 **Self-documenting** - YAML files explain each parameter
+
+### Configuration Categories
+- **Demographics**: Age, income, device, region distributions
+- **Tech-savviness**: Scoring algorithm and adjustments
+- **Treatment Assignment**: Adoption probability factors
+- **Baseline Behavior**: 2023 filing patterns
+- **Outcomes**: 2024 treatment effects and metrics
+
+### Usage Examples
+```python
+# Use default configuration
+from src.data_simulation import generate_and_save_data
+df = generate_and_save_data()
+
+# Use custom configuration
+df = generate_and_save_data(config_path="config/scenario_high_treatment.yaml")
+
+# Generate multiple scenarios
+from src.data_simulation import TaxSoftwareDataSimulator
+simulator = TaxSoftwareDataSimulator(
+    n_users=5000, 
+    config_path="config/scenario_low_adoption.yaml"
+)
+df = simulator.generate_complete_dataset()
+```
 
 ## 🚀 Getting Started
 

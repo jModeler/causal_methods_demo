@@ -53,6 +53,7 @@ dependencies = [
     # Data generation and utilities
     "faker>=18.0.0",  # For realistic synthetic data
     "tqdm>=4.64.0",   # Progress bars
+    "pyyaml>=6.0",    # For configuration files
 ]
 
 [project.optional-dependencies]
@@ -66,23 +67,50 @@ dev = [
 Homepage = "https://github.com/example/causal-methods-demo"
 Repository = "https://github.com/example/causal-methods-demo"
 
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "flake8>=7.3.0",
+    "isort>=6.0.1",
+    "mypy>=1.17.0",
+]
+test = [
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
+    "pytest-mock>=3.14.1",
+]
+
 [tool.ruff]
+# Set line length to match project preference
 line-length = 88
 target-version = "py310"
 
 [tool.ruff.lint]
+# Enable commonly used rule sets
 select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "C4", # flake8-comprehensions
-    "UP", # pyupgrade
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "C90", # mccabe
 ]
-ignore = []
+
+# Allow some commonly used long lines in tests and documentation
+ignore = [
+    "E501",  # Line too long - will be handled by formatter when possible
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can be a bit more lenient
+"tests/*" = [
+    "F841",  # Unused variable - common in tests for setup
+]
 
 [tool.ruff.format]
+# Use double quotes consistently
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false

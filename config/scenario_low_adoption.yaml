@@ -1,0 +1,55 @@
+# Low Adoption Scenario Configuration
+# This scenario models lower treatment adoption rates
+
+simulation:
+  random_seed: 456
+  default_n_users: 10000
+
+# Lower treatment adoption rates
+treatment:
+  base_adoption_rate: 0.25  # Much lower base rate
+  
+  tech_effects:
+    high_threshold: 70
+    high_boost: 0.20  # Reduced boost
+    medium_threshold: 50
+    medium_boost: 0.08  # Reduced boost
+    low_threshold: 30
+    low_penalty: -0.25  # Stronger penalty
+  
+  age_effects:
+    young_threshold: 35
+    young_boost: 0.12  # Reduced
+    old_threshold: 55
+    old_penalty: -0.15  # Stronger penalty
+  
+  device_effects:
+    mobile_boost: 0.03  # Reduced
+    tablet_penalty: -0.08  # Stronger penalty
+  
+  early_login_boost: 0.15  # Reduced
+  returning_user_boost: 0.03  # Reduced
+  
+  income_effects:
+    high_income_boost: 0.08  # Reduced
+    low_income_penalty: -0.08  # Stronger penalty
+  
+  min_probability: 0.02  # Lower minimum
+  max_probability: 0.85  # Lower maximum
+
+# Compensate with slightly stronger treatment effects
+outcomes_2024:
+  filing:
+    base_rate: 0.72
+    treatment_effects:
+      base_effect: 0.12  # Stronger effect to compensate for lower adoption
+      low_tech_boost: 0.06
+      high_tech_reduction: -0.01
+      older_user_boost: 0.04
+      new_user_boost: 0.05
+    filed_2023_boost: 0.15
+    apply_demographic_effects: true
+    max_probability: 0.95
+
+# This scenario would result in lower overall treatment rates
+# but potentially stronger effects among those who do adopt 
