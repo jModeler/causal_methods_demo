@@ -454,7 +454,7 @@ class PropensityScoreMatching:
         ax.grid(True, alpha=0.3)
 
         # Add value labels
-        for i, (effect, bar) in enumerate(zip(effects, bars, strict=False)):
+        for _i, (effect, bar) in enumerate(zip(effects, bars, strict=False)):
             ax.text(
                 effect + 0.01 if effect >= 0 else effect - 0.01,
                 bar.get_y() + bar.get_height() / 2,

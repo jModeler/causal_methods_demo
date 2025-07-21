@@ -297,7 +297,7 @@ class TestSyntheticControlConstruction:
         assert len(sc.synthetic_weights) > 0
 
         # Each weight vector should sum to 1
-        for unit_id, weights in sc.synthetic_weights.items():
+        for _unit_id, weights in sc.synthetic_weights.items():
             assert abs(weights.sum() - 1.0) < 1e-6
             assert all(w >= 0 for w in weights)
 

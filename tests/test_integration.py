@@ -777,8 +777,8 @@ class TestDMLIntegration:
         assert 'ci_upper' in results
 
         # Verify values are reasonable
-        assert isinstance(results['ate'], (int, float))
-        assert isinstance(results['se'], (int, float))
+        assert isinstance(results['ate'], int | float)
+        assert isinstance(results['se'], int | float)
         assert results['se'] >= 0
         assert 0 <= results['p_value'] <= 1
         assert results['ci_lower'] <= results['ci_upper']
@@ -812,7 +812,7 @@ class TestDMLIntegration:
         assert 'filed_2024' in results
         assert 'satisfaction_2024' in results
 
-        for outcome, result in results.items():
+        for _outcome, result in results.items():
             assert 'ate' in result
             assert 'se' in result
             assert 'p_value' in result
@@ -878,7 +878,7 @@ class TestCUPEDIntegration:
         # Should handle binary outcome correctly
         assert 'cuped' in results
         assert 'original' in results
-        assert isinstance(results['cuped']['ate'], (int, float))
+        assert isinstance(results['cuped']['ate'], int | float)
         assert -1 <= results['cuped']['ate'] <= 1  # ATE should be reasonable for binary outcome
 
 
@@ -945,7 +945,7 @@ class TestMethodComparison:
                 print(f"  {method}: {ate:.4f}")
 
         # All estimates should be reasonable for binary outcome (between -1 and 1)
-        for method, ate in results.items():
+        for _method, ate in results.items():
             if ate is not None:
                 assert -1 <= ate <= 1  # Reasonable range for binary outcome ATE
 
@@ -1028,7 +1028,7 @@ class TestMethodComparison:
         assert len(sc.synthetic_weights) > 0
 
         # Each set of weights should sum to 1
-        for unit_id, weights in sc.synthetic_weights.items():
+        for _unit_id, weights in sc.synthetic_weights.items():
             assert abs(weights.sum() - 1.0) < 1e-6
             assert all(w >= 0 for w in weights)
 
@@ -1148,7 +1148,7 @@ class TestCausalForestIntegration:
             # Check result structure
             assert 'conditional_treatment_effect' in result
             assert 'feature_values' in result
-            assert isinstance(result['conditional_treatment_effect'], (int, float))
+            assert isinstance(result['conditional_treatment_effect'], int | float)
 
         # Effects should vary across segments (heterogeneity)
         effect_values = list(segment_effects.values())
@@ -1195,7 +1195,7 @@ class TestCausalForestIntegration:
 
         # Check that causal forest produces reasonable results
         cf_ate = results['Causal Forest']
-        assert isinstance(cf_ate, (int, float))
+        assert isinstance(cf_ate, int | float)
         assert not np.isnan(cf_ate)
         assert not np.isinf(cf_ate)
 
@@ -1317,7 +1317,7 @@ class TestCausalForestIntegration:
 
         # All segments should have valid effect estimates
         for segment, effect in segment_results.items():
-            assert isinstance(effect, (int, float))
+            assert isinstance(effect, int | float)
             assert not np.isnan(effect)
             assert -1 <= effect <= 1, f"Effect for {segment} seems unrealistic: {effect}"
 
