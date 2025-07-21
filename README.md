@@ -162,6 +162,21 @@ results = sc.construct_synthetic_controls(
 )
 ```
 
+### 🌲 **6. Causal Forest**
+- **Notebook**: `notebooks/06_causal_forest_tax.ipynb`
+- **Documentation**: `docs/causal_forest_guide.md`
+- **Core Idea**: Estimate heterogeneous treatment effects using specialized random forests
+
+```python
+cf = CausalForest(df, random_state=42)
+cf.fit_causal_forest(
+    outcome_col='filed_2024',
+    treatment_col='used_smart_assistant',
+    covariate_cols=['age', 'tech_savviness', 'sessions_2023', 'filed_2023']
+)
+results = cf.estimate_treatment_effects()
+```
+
 ## 🔍 **Method Comparison Framework**
 
 Each notebook includes comprehensive method comparisons:
@@ -173,7 +188,8 @@ methods_comparison = {
     'DML': dml_results['ate'],
     'CUPED': cuped_results['cuped']['ate'],
     'DiD': did_results['treatment_effect'],
-    'Synthetic Control': sc_results['average_treatment_effect']
+    'Synthetic Control': sc_results['average_treatment_effect'],
+    'Causal Forest': cf_results['ate']
 }
 
 for method, ate in methods_comparison.items():
@@ -190,20 +206,23 @@ causal_methods_demo/
 │   │   ├── dml.py              # Double Machine Learning
 │   │   ├── cuped.py            # CUPED implementation
 │   │   ├── did.py              # Difference-in-Differences
-│   │   └── synthetic_control.py # Synthetic Control
+│   │   ├── synthetic_control.py # Synthetic Control
+│   │   └── causal_forest.py    # Causal Forest
 │   └── data_simulation.py      # Synthetic data generation
 ├── notebooks/
 │   ├── 01_did_tax.ipynb        # DiD demonstration
 │   ├── 02_psm_tax.ipynb        # PSM demonstration
 │   ├── 03_dml_tax.ipynb        # DML demonstration
 │   ├── 04_cuped_tax.ipynb      # CUPED demonstration
-│   └── 05_synthetic_control_tax.ipynb # Synthetic Control demonstration
+│   ├── 05_synthetic_control_tax.ipynb # Synthetic Control demonstration
+│   └── 06_causal_forest_tax.ipynb # Causal Forest demonstration
 ├── docs/
 │   ├── psm_guide.md            # PSM documentation
 │   ├── dml_guide.md            # DML documentation
 │   ├── cuped_guide.md          # CUPED documentation
 │   ├── did_guide.md            # DiD documentation
 │   ├── synthetic_control_guide.md # Synthetic Control documentation
+│   ├── causal_forest_guide.md  # Causal Forest documentation
 │   └── README.md               # Documentation index
 ├── tests/                      # Comprehensive test suite
 ├── config/                     # Configuration files
@@ -224,6 +243,7 @@ pytest tests/test_dml.py -v
 pytest tests/test_cuped.py -v
 pytest tests/test_did.py -v
 pytest tests/test_synthetic_control.py -v
+pytest tests/test_causal_forest.py -v
 
 # Run integration tests
 pytest tests/test_integration.py -v
@@ -266,7 +286,8 @@ pytest tests/test_integration.py -v
 4. **DML**: `03_dml_tax.ipynb` - Machine learning for causal inference
 5. **Synthetic Control**: `05_synthetic_control_tax.ipynb` - Individual-level effects
 
-### **Advanced**: Method Selection and Comparison
+### **Advanced**: Heterogeneous Effects and Method Comparison
+6. **Causal Forest**: `06_causal_forest_tax.ipynb` - Personalized treatment effects
 - Read `docs/README.md` for method selection guidance
 - Compare results across methods for robustness
 - Implement custom extensions and modifications
@@ -282,6 +303,8 @@ pytest tests/test_integration.py -v
 | **Individual-level Effects** | Synthetic Control | DML | Transparent matching process |
 | **Limited Pre-treatment Data** | PSM | DML | Work with available confounders |
 | **Time Series Analysis** | DiD | Synthetic Control | Exploit temporal variation |
+| **Heterogeneous Effects** | Causal Forest | DML | Personalized treatment effects |
+| **Segment-specific Insights** | Causal Forest | PSM | Business targeting and personalization |
 
 ## 📈 **Business Impact Examples**
 
@@ -293,11 +316,16 @@ Method Comparison Results:
 - CUPED ATE: +4.1% filing rate increase
 - DiD ATE: +3.9% filing rate increase
 - Synthetic Control ATE: +4.3% filing rate increase
+- Causal Forest ATE: +4.0% filing rate increase
+  * High-value users: +6.1% increase
+  * New users: +2.8% increase
+  * Effect heterogeneity: ±1.5%
 
 Business Impact (100K users):
 - Additional filings: ~4,000 per year
 - Revenue impact: $200K+ annually
 - ROI: 400%+ (vs. development costs)
+- Targeted ROI (top 50%): 520%+ with 50% cost reduction
 ```
 
 ## 🤝 **Contributing**
@@ -314,10 +342,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🏆 **Why This Toolkit?**
 
-- **Comprehensive**: Five major causal inference methods in one place
+- **Comprehensive**: Six major causal inference methods in one place
 - **Production-Ready**: Robust implementations with extensive testing
 - **Business-Focused**: Clear ROI analysis and decision frameworks
 - **Educational**: Step-by-step learning path with detailed explanations
 - **Practical**: Real-world scenarios and implementation guidance
+- **Heterogeneity-Aware**: Personalized effects with Causal Forest implementation
 
 **🚀 Start exploring causal inference for your business decisions today!** 
