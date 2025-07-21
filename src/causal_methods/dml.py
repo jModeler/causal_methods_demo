@@ -161,6 +161,121 @@ class DoubleMachineLearning:
 
         return Y, D, X
 
+    def _calculate_information_criteria(
+        self,
+        model,
+        X: np.ndarray,
+        y: np.ndarray,
+        model_type: str,
+    ) -> dict[str, float]:
+        """
+        Calculate AIC and BIC for model selection.
+
+        Parameters:
+        -----------
+        model : sklearn model
+            Fitted model
+        X : np.ndarray
+            Features
+        y : np.ndarray
+            Target values
+        model_type : str
+            Either 'regression' or 'classification'
+
+        Returns:
+        --------
+        Dict[str, float]
+            AIC and BIC values
+        """
+        n_samples = len(y)
+
+        # Get number of parameters - this is model-specific
+        try:
+            if hasattr(model, 'n_features_in_'):
+                n_features = model.n_features_in_
+            else:
+                n_features = X.shape[1]
+
+            # Estimate effective parameters based on model type
+            if hasattr(model, 'coef_'):
+                # Linear models
+                if model.coef_.ndim == 1:
+                    n_params = len(model.coef_) + 1  # coefficients + intercept
+                else:
+                    n_params = model.coef_.size + model.coef_.shape[0]  # multiclass
+            elif hasattr(model, 'n_estimators'):
+                # Tree-based ensembles - approximate complexity
+                n_estimators = model.n_estimators
+                if hasattr(model, 'max_depth') and model.max_depth:
+                    max_depth = model.max_depth
+                else:
+                    max_depth = 10  # sklearn default estimation
+                # Rough approximation for tree ensemble complexity
+                n_params = n_estimators * min(2**max_depth, n_samples) * 0.1
+            else:
+                # Default estimation
+                n_params = n_features + 1
+
+        except Exception:
+            # Fallback to simple estimation
+            n_params = X.shape[1] + 1
+
+        # Calculate log-likelihood
+        y_pred = model.predict(X)
+
+        if model_type == "regression":
+            # For regression: log-likelihood based on residual sum of squares
+            residuals = y - y_pred
+            rss = np.sum(residuals**2)
+            # Assuming normal errors: log L = -n/2 * log(2π) - n/2 * log(σ²) - RSS/(2σ²)
+            # Since σ² = RSS/n, this simplifies to: log L = -n/2 * (log(2π) + 1 + log(RSS/n))
+            if rss > 0:
+                log_likelihood = -n_samples/2 * (np.log(2*np.pi) + 1 + np.log(rss/n_samples))
+            else:
+                log_likelihood = 0  # Perfect fit
+        else:
+            # For classification: use predicted probabilities if available
+            if hasattr(model, 'predict_proba'):
+                try:
+                    y_pred_proba = model.predict_proba(X)
+                    # Avoid log(0) by adding small epsilon
+                    epsilon = 1e-15
+                    y_pred_proba = np.clip(y_pred_proba, epsilon, 1 - epsilon)
+
+                    # For binary classification
+                    if y_pred_proba.shape[1] == 2:
+                        # Convert labels to 0/1 if needed
+                        y_binary = (y == y.max()).astype(int) if len(np.unique(y)) == 2 else y
+                        log_likelihood = np.sum(y_binary * np.log(y_pred_proba[:, 1]) +
+                                              (1 - y_binary) * np.log(y_pred_proba[:, 0]))
+                    else:
+                        # Multiclass
+                        y_encoded = np.zeros((len(y), y_pred_proba.shape[1]))
+                        for i, label in enumerate(y):
+                            y_encoded[i, int(label)] = 1
+                        log_likelihood = np.sum(y_encoded * np.log(y_pred_proba))
+                except Exception:
+                    # Fallback: use accuracy-based approximation
+                    accuracy = accuracy_score(y, y_pred)
+                    log_likelihood = n_samples * (accuracy * np.log(accuracy + 1e-15) +
+                                                 (1 - accuracy) * np.log(1 - accuracy + 1e-15))
+            else:
+                # Fallback for models without predict_proba
+                accuracy = accuracy_score(y, y_pred)
+                log_likelihood = n_samples * (accuracy * np.log(accuracy + 1e-15) +
+                                             (1 - accuracy) * np.log(1 - accuracy + 1e-15))
+
+        # Calculate AIC and BIC
+        aic = 2 * n_params - 2 * log_likelihood
+        bic = np.log(n_samples) * n_params - 2 * log_likelihood
+
+        return {
+            "aic": aic,
+            "bic": bic,
+            "log_likelihood": log_likelihood,
+            "n_params": n_params
+        }
+
     def _evaluate_model_performance(
         self,
         model,
@@ -171,7 +286,7 @@ class DoubleMachineLearning:
         model_type: str,
     ) -> dict[str, float]:
         """
-        Evaluate model performance on test set.
+        Evaluate model performance on test set with information criteria.
 
         Parameters:
         -----------
@@ -187,14 +302,26 @@ class DoubleMachineLearning:
         Returns:
         --------
         Dict[str, float]
-            Performance metrics
+            Performance metrics including information criteria
         """
         y_pred = model.predict(X_test)
+
+        # Calculate information criteria on training set (where model was fitted)
+        info_criteria = self._calculate_information_criteria(model, X_train, y_train, model_type)
 
         if model_type == "regression":
             mse = mean_squared_error(y_test, y_pred)
             r2 = r2_score(y_test, y_pred)
-            return {"mse": mse, "rmse": np.sqrt(mse), "r2": r2}
+
+            return {
+                "mse": mse,
+                "rmse": np.sqrt(mse),
+                "r2": r2,
+                "aic": info_criteria["aic"],
+                "bic": info_criteria["bic"],
+                "log_likelihood": info_criteria["log_likelihood"],
+                "n_params": info_criteria["n_params"]
+            }
         else:  # classification
             if hasattr(model, "predict_proba"):
                 proba = model.predict_proba(X_test)
@@ -210,7 +337,15 @@ class DoubleMachineLearning:
                 auc = np.nan
 
             accuracy = accuracy_score(y_test, y_pred)
-            return {"accuracy": accuracy, "auc": auc}
+
+            return {
+                "accuracy": accuracy,
+                "auc": auc,
+                "aic": info_criteria["aic"],
+                "bic": info_criteria["bic"],
+                "log_likelihood": info_criteria["log_likelihood"],
+                "n_params": info_criteria["n_params"]
+            }
 
     def estimate_treatment_effects(
         self,
@@ -763,12 +898,22 @@ class DoubleMachineLearning:
                 report += "  Outcome Model Performance:\n"
                 for metric, values in avg_outcome_perf.items():
                     if not any(np.isnan(values)):
-                        report += f"    {metric.upper()}: {np.mean(values):.4f} (±{np.std(values):.4f})\n"
+                        if metric == 'n_params':
+                            report += f"    {metric.upper()}: {np.mean(values):.0f}\n"
+                        elif metric in ['aic', 'bic']:
+                            report += f"    {metric.upper()}: {np.mean(values):.2f} (±{np.std(values):.2f})\n"
+                        else:
+                            report += f"    {metric.upper()}: {np.mean(values):.4f} (±{np.std(values):.4f})\n"
 
                 report += "  Treatment Model Performance:\n"
                 for metric, values in avg_treatment_perf.items():
                     if not any(np.isnan(values)):
-                        report += f"    {metric.upper()}: {np.mean(values):.4f} (±{np.std(values):.4f})\n"
+                        if metric == 'n_params':
+                            report += f"    {metric.upper()}: {np.mean(values):.0f}\n"
+                        elif metric in ['aic', 'bic']:
+                            report += f"    {metric.upper()}: {np.mean(values):.2f} (±{np.std(values):.2f})\n"
+                        else:
+                            report += f"    {metric.upper()}: {np.mean(values):.4f} (±{np.std(values):.4f})\n"
 
             report += "\n" + "=" * 50 + "\n\n"
 
