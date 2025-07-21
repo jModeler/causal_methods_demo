@@ -448,8 +448,17 @@ class CUPED:
         treated_orig = self.data[outcome_col][treatment == 1]
         control_orig = self.data[outcome_col][treatment == 0]
         
-        axes[0, 0].hist(control_orig, alpha=0.6, label='Control', bins=30, color='red')
-        axes[0, 0].hist(treated_orig, alpha=0.6, label='Treated', bins=30, color='blue')
+        # Convert boolean outcomes to integers for plotting
+        if treated_orig.dtype == 'bool' or control_orig.dtype == 'bool':
+            treated_orig = treated_orig.astype(int)
+            control_orig = control_orig.astype(int)
+            # Use fewer bins for binary outcomes
+            hist_bins = [0, 0.5, 1]
+        else:
+            hist_bins = 30
+        
+        axes[0, 0].hist(control_orig, alpha=0.6, label='Control', bins=hist_bins, color='red')
+        axes[0, 0].hist(treated_orig, alpha=0.6, label='Treated', bins=hist_bins, color='blue')
         axes[0, 0].set_title('Original Outcome Distribution')
         axes[0, 0].set_xlabel('Outcome Value')
         axes[0, 0].set_ylabel('Frequency')
@@ -459,6 +468,7 @@ class CUPED:
         treated_cuped = cuped_outcome[treatment == 1]
         control_cuped = cuped_outcome[treatment == 0]
         
+        # Handle CUPED outcomes (these are continuous even if original was binary)
         axes[0, 1].hist(control_cuped.dropna(), alpha=0.6, label='Control', bins=30, color='red')
         axes[0, 1].hist(treated_cuped.dropna(), alpha=0.6, label='Treated', bins=30, color='blue')
         axes[0, 1].set_title('CUPED-Adjusted Outcome Distribution')
