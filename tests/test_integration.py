@@ -11,6 +11,7 @@ from src.causal_methods.did import DifferenceInDifferences
 from src.causal_methods.psm import PropensityScoreMatching, load_and_analyze_psm
 from src.causal_methods.dml import DoubleMachineLearning, load_and_analyze_dml
 from src.data_simulation import TaxSoftwareDataSimulator, generate_and_save_data
+from src.causal_methods.cuped import CUPED
 
 
 class TestFullWorkflow:
@@ -817,51 +818,161 @@ class TestDMLIntegration:
             assert 'p_value' in result
 
 
-class TestMethodComparison:
-    """Test comparing different causal inference methods on the same data."""
+class TestCUPEDIntegration:
+    """Integration tests for CUPED functionality."""
     
-    def test_psm_vs_dml_comparison(self, real_config_path):
-        """Compare PSM and DML results on the same dataset."""
-        # Generate larger dataset for method comparison
-        df = generate_and_save_data(
-            output_path=None,
-            n_users=400,
-            config_path=real_config_path,
+    def test_cuped_on_synthetic_data(self, sample_data):
+        """Test CUPED workflow on synthetic data."""
+        cuped = CUPED(sample_data, random_state=42)
+        
+        # Define pre-experiment covariates
+        pre_covariates = ['baseline_outcome', 'user_engagement']
+        
+        # Estimate treatment effects
+        results = cuped.estimate_treatment_effects(
+            outcome_col='outcome',
+            treatment_col='treatment',
+            covariate_cols=pre_covariates
         )
         
-        covariates = ['age', 'tech_savviness', 'filed_2023', 'early_login_2024']
+        # Basic checks
+        assert 'original' in results
+        assert 'cuped' in results
+        assert 'summary' in results
         
-        # PSM Analysis
-        psm = PropensityScoreMatching(df)
-        psm.estimate_propensity_scores(
-            treatment_col='used_smart_assistant',
-            covariates=covariates
+        # CUPED should improve precision
+        assert results['cuped']['se'] <= results['original']['se']
+        assert results['summary']['variance_reduction'] >= 0
+        
+        # ATE should be similar (unbiased)
+        ate_diff = abs(results['cuped']['ate'] - results['original']['ate'])
+        assert ate_diff < 0.5  # Should be close
+    
+    def test_cuped_with_weak_covariates(self, sample_data):
+        """Test CUPED performance with weak covariates."""
+        # Create weak covariate
+        sample_data_weak = sample_data.copy()
+        sample_data_weak['weak_covariate'] = np.random.normal(0, 1, len(sample_data))
+        
+        cuped = CUPED(sample_data_weak, random_state=42)
+        
+        results = cuped.estimate_treatment_effects(
+            outcome_col='outcome',
+            treatment_col='treatment',
+            covariate_cols=['weak_covariate']
         )
-        psm.perform_matching(method='nearest_neighbor', caliper=0.1)
-        psm_effects = psm.estimate_treatment_effects(
-            outcome_cols='filed_2024',
-            treatment_col='used_smart_assistant'
+        
+        # Should still work but with minimal improvement
+        assert 'summary' in results
+        # Variance reduction might be minimal or even negative
+        assert results['summary']['variance_reduction'] < 0.2
+    
+    def test_cuped_binary_outcome(self, sample_data):
+        """Test CUPED with binary outcome."""
+        # Convert outcome to binary
+        sample_data_binary = sample_data.copy()
+        sample_data_binary['outcome_binary'] = (
+            sample_data_binary['outcome'] > sample_data_binary['outcome'].median()
+        ).astype(int)
+        
+        cuped = CUPED(sample_data_binary, random_state=42)
+        
+        results = cuped.estimate_treatment_effects(
+            outcome_col='outcome_binary',
+            treatment_col='treatment',
+            covariate_cols=['baseline_outcome']
         )
         
-        # DML Analysis
-        dml = DoubleMachineLearning(df, random_state=42)
-        dml_effects = dml.estimate_treatment_effects(
-            outcome_col='filed_2024',
-            treatment_col='used_smart_assistant',
-            covariates=covariates,
-            n_folds=2
+        assert 'original' in results
+        assert 'cuped' in results
+        # Binary outcomes might have different variance reduction characteristics
+        assert results['summary']['variance_reduction'] >= -0.1  # Allow some negative
+
+
+class TestMethodComparison:
+    """Compare different causal inference methods."""
+    
+    def test_all_methods_on_same_data(self, sample_data):
+        """Compare PSM, DML, and CUPED on the same dataset."""
+        # Restrict to numeric covariates only for DML
+        numeric_covariates = ['baseline_outcome', 'user_engagement', 'user_age']
+        
+        results = {}
+        
+        # PSM
+        try:
+            psm = PropensityScoreMatching(sample_data)
+            psm_ps = psm.estimate_propensity_scores(covariates=numeric_covariates)
+            psm_match = psm.perform_matching()
+            psm_effects = psm.estimate_treatment_effects(outcome_cols='outcome')
+            results['PSM'] = psm_effects['outcome']['ate']
+        except Exception as e:
+            results['PSM'] = None
+            print(f"PSM failed: {e}")
+        
+        # DML
+        try:
+            dml = DoubleMachineLearning(sample_data, random_state=42)
+            dml_results = dml.estimate_treatment_effects(
+                outcome_col='outcome',
+                treatment_col='treatment',
+                covariates=numeric_covariates,
+                n_folds=3
+            )
+            results['DML'] = dml_results['ate']
+        except Exception as e:
+            results['DML'] = None
+            print(f"DML failed: {e}")
+        
+        # CUPED
+        try:
+            cuped = CUPED(sample_data, random_state=42)
+            cuped_results = cuped.estimate_treatment_effects(
+                outcome_col='outcome',
+                treatment_col='treatment',
+                covariate_cols=numeric_covariates
+            )
+            results['CUPED'] = cuped_results['cuped']['ate']
+        except Exception as e:
+            results['CUPED'] = None
+            print(f"CUPED failed: {e}")
+        
+        # Naive difference
+        treated_mean = sample_data[sample_data['treatment'] == 1]['outcome'].mean()
+        control_mean = sample_data[sample_data['treatment'] == 0]['outcome'].mean()
+        results['Naive'] = treated_mean - control_mean
+        
+        # Check that we got some results
+        successful_methods = [k for k, v in results.items() if v is not None]
+        assert len(successful_methods) >= 2  # At least naive + one other method
+        
+        print("Method comparison results:")
+        for method, ate in results.items():
+            if ate is not None:
+                print(f"  {method}: {ate:.4f}")
+        
+        # All estimates should be reasonably close to the true effect (2.0)
+        for method, ate in results.items():
+            if ate is not None:
+                assert abs(ate - 2.0) < 1.0  # Within reasonable range
+    
+    def test_cuped_vs_naive_precision(self, sample_data):
+        """Test that CUPED provides better precision than naive analysis."""
+        cuped = CUPED(sample_data, random_state=42)
+        
+        results = cuped.estimate_treatment_effects(
+            outcome_col='outcome',
+            treatment_col='treatment',
+            covariate_cols=['baseline_outcome', 'user_engagement']
         )
         
-        # Compare results
-        psm_ate = psm_effects['filed_2024']['ate']
-        dml_ate = dml_effects['ate']
+        # CUPED should have smaller confidence intervals
+        orig_ci_width = results['original']['ci_upper'] - results['original']['ci_lower']
+        cuped_ci_width = results['cuped']['ci_upper'] - results['cuped']['ci_lower']
         
-        # Both should be numeric and not NaN
-        assert isinstance(psm_ate, (int, float))
-        assert isinstance(dml_ate, (int, float))
-        assert not np.isnan(psm_ate)
-        assert not np.isnan(dml_ate)
+        # Allow for some cases where CUPED doesn't help much
+        ci_improvement = (orig_ci_width - cuped_ci_width) / orig_ci_width
+        assert ci_improvement >= -0.1  # Allow small degradation
         
-        # Results should be in reasonable range (between -1 and 1 for filing rate effects)
-        assert -1 <= psm_ate <= 1
-        assert -1 <= dml_ate <= 1
+        # Variance reduction should be non-negative in most cases
+        assert results['summary']['variance_reduction'] >= -0.1

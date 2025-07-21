@@ -23,220 +23,202 @@ causal_methods_demo/
 └── docs/                       # Documentation
 ```
 
-## 🔬 Implemented Methods
+## 📊 Implemented Methods
 
-### 1. **Propensity Score Matching (PSM)** ✨ *New!*
-- **Purpose**: Reduce selection bias by matching treated and control units based on propensity scores
+### 1. **Propensity Score Matching (PSM)**
+- **Purpose**: Matches treated and control units based on propensity scores
 - **Implementation**: `src/causal_methods/psm.py`
 - **Notebook**: `notebooks/02_psm_tax.ipynb`
-- **Features**:
-  - Multiple matching algorithms (nearest neighbor, caliper)
-  - Automated covariate balance assessment
+- **Key Features**:
+  - Multiple matching algorithms (nearest neighbor, caliper matching)
+  - Automated covariate balance assessment  
   - Statistical significance testing with proper binary outcome handling
   - Rich visualizations (propensity distributions, balance plots, effect plots)
   - Robust error handling and edge case management
 
-### 2. **Difference-in-Differences (DiD)**
-- **Purpose**: Estimate treatment effects using temporal variation
+### 2. **Double Machine Learning (DML)** ✨ *Enhanced with Information Criteria!*
+- **Purpose**: Combines ML prediction with causal inference using cross-fitting
+- **Implementation**: `src/causal_methods/dml.py`
+- **Notebook**: `notebooks/03_dml_tax.ipynb`
+- **Key Features**:
+  - **Cross-fitting with K-fold splits** to avoid overfitting bias
+  - **Multiple ML algorithms**: Random Forest, Gradient Boosting, Linear/Logistic Regression, Ridge
+  - **Information Criteria Integration**: AIC and BIC for principled model selection
+  - **Robust Model Performance**: Handles both continuous and binary outcomes
+  - **Comprehensive Diagnostics**: Model comparison, residual analysis, treatment effect visualization
+  - **Statistical Inference**: Confidence intervals, p-values, influence function-based standard errors
+  - **Edge Case Handling**: Single-class predictions, missing predict_proba methods, perfect separation
+  - **Multiple Outcomes**: Estimate effects on several outcome variables simultaneously
+
+### 3. **CUPED (Controlled-experiment Using Pre-Experiment Data)**
+- **Purpose**: Variance reduction technique for randomized experiments
+- **Implementation**: `src/causal_methods/cuped.py`
+- **Notebook**: `notebooks/04_cuped_tax.ipynb`
+- **Key Features**:
+  - Uses pre-experiment covariates to increase statistical power
+  - Preserves unbiasedness while reducing confidence intervals
+  - Optimal adjustment coefficient estimation (θ)
+  - Multiple regression methods (OLS, Ridge, Lasso)
+  - Covariate balance checking for randomized experiments
+  - Substantial variance reduction and power improvements
+
+### 4. **Difference-in-Differences (DiD)**
+- **Purpose**: For before/after treatment analysis with panel data
 - **Implementation**: `src/causal_methods/did.py`
 - **Notebook**: `notebooks/01_did_tax.ipynb`
-- **Features**:
-  - Panel data preparation and regression analysis
+- **Key Features**:
+  - Controls for time-invariant confounders
   - Parallel trends assumption testing
-  - Treatment effect visualization
-
-### 3. **Synthetic Data Generation**
-- **Purpose**: Generate realistic tax software user data for method demonstration
-- **Implementation**: `src/data_simulation.py`
-- **Features**:
-  - Configurable user demographics and behavior patterns
-  - Realistic selection bias and confounding factors
-  - Multiple scenario configurations
+  - Robust standard errors with clustering
+  - Panel data preparation and visualization
 
 ## 🚀 Quick Start
 
-### Installation
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd causal_methods_demo
-
-# Install dependencies using uv
-uv sync
-```
-
-### Basic Usage
-
-#### Propensity Score Matching Example
+### Double Machine Learning with Information Criteria
 ```python
-from src.causal_methods.psm import PropensityScoreMatching, load_and_analyze_psm
+from src.causal_methods.dml import DoubleMachineLearning
 
-# Quick analysis using convenience function
-psm = load_and_analyze_psm(
-    file_path="data/your_data.csv",
-    treatment_col="used_smart_assistant",
-    outcome_cols="filed_2024",
-    matching_method="nearest_neighbor",
-    caliper=0.1
+# Initialize DML
+dml = DoubleMachineLearning(data, random_state=42)
+
+# Estimate treatment effects with model comparison
+results = dml.estimate_treatment_effects(
+    outcome_col='revenue',
+    treatment_col='used_feature',
+    covariates=['age', 'income', 'past_purchases'],
+    outcome_model='random_forest',
+    treatment_model='gradient_boosting',
+    n_folds=5
 )
 
-# View results
-print(psm.generate_summary_report())
+print(f"ATE: {results['ate']:.4f}")
+print(f"95% CI: [{results['ci_lower']:.4f}, {results['ci_upper']:.4f}]")
+print(f"P-value: {results['p_value']:.4f}")
+
+# Compare multiple ML models with information criteria
+comparison = dml.compare_models(
+    outcome_col='revenue',
+    treatment_col='used_feature',
+    covariates=['age', 'income', 'past_purchases']
+)
+
+# Find best models by information criteria
+best_aic = comparison.loc[comparison['aic'].idxmin()]
+best_bic = comparison.loc[comparison['bic'].idxmin()]
+
+print(f"Best AIC model: {best_aic['outcome_model']} + {best_aic['treatment_model']}")
+print(f"Best BIC model: {best_bic['outcome_model']} + {best_bic['treatment_model']}")
+
+# Generate comprehensive report
+report = dml.generate_summary_report('revenue')
+print(report)
 ```
 
-#### Manual PSM Workflow
+### CUPED for Randomized Experiments
+```python
+from src.causal_methods.cuped import CUPED
+
+# Initialize CUPED
+cuped = CUPED(data, random_state=42)
+
+# Estimate treatment effects with variance reduction
+results = cuped.estimate_treatment_effects(
+    outcome_col='conversion_rate',
+    treatment_col='treatment_group',
+    covariate_cols=['baseline_conversion', 'user_engagement', 'past_activity']
+)
+
+print(f"Variance reduction: {results['summary']['variance_reduction']:.1%}")
+print(f"Power improvement: {results['summary']['power_improvement']:.1f}×")
+print(f"SE reduction: {results['summary']['se_reduction']:.1%}")
+
+# Visualize CUPED impact
+fig = cuped.plot_cuped_comparison('conversion_rate', 'treatment_group')
+```
+
+### Propensity Score Matching
 ```python
 from src.causal_methods.psm import PropensityScoreMatching
 
 # Initialize PSM
-psm = PropensityScoreMatching(your_dataframe)
+psm = PropensityScoreMatching(data)
 
 # Estimate propensity scores
 ps_results = psm.estimate_propensity_scores(
-    covariates=['age', 'income', 'tech_savviness']
+    covariates=['age', 'income', 'education']
 )
 
-# Perform matching
-matching_results = psm.perform_matching(method='nearest_neighbor', caliper=0.1)
-
-# Assess balance
-balance_results = psm.assess_balance()
-
-# Estimate treatment effects
-effects = psm.estimate_treatment_effects(outcome_cols='your_outcome')
-```
-
-#### Difference-in-Differences Example
-```python
-from src.causal_methods.did import DifferenceInDifferences
-
-# Initialize DiD
-did = DifferenceInDifferences(your_dataframe)
-
-# Prepare panel data
-panel_df = did.prepare_panel_data()
-
-# Estimate treatment effects
-results = did.estimate_did()
-```
-
-### Data Generation
-```python
-from src.data_simulation import generate_and_save_data
-
-# Generate synthetic tax software data
-df = generate_and_save_data(
-    output_path="data/synthetic_data.csv",
-    n_users=1000,
-    config_path="config/simulation_config.yaml"
+# Perform matching with caliper
+matching_results = psm.perform_matching(
+    method='nearest_neighbor', 
+    caliper=0.1
 )
+
+# Estimate treatment effects
+effects = psm.estimate_treatment_effects(outcome_cols='outcome')
+
+print(f"ATE: {effects['outcome']['ate']:.4f}")
+print(f"Matching rate: {matching_results['matching_rate']:.1%}")
 ```
 
-## 📊 Example Scenarios
+## 🔬 Information Criteria in Model Selection
 
-The project includes several pre-configured scenarios demonstrating different business contexts:
+Our DML implementation features advanced model selection using **information criteria**:
 
-- **Baseline**: Standard adoption and treatment effects
-- **High Treatment**: Increased treatment effect scenario
-- **Low Adoption**: Lower treatment adoption rates
+### Why Information Criteria vs R²?
 
-Configure scenarios using YAML files in the `config/` directory.
+- **Account for Model Complexity**: Penalize overfitting appropriately
+- **Fair Model Comparison**: Compare different algorithms on equal footing  
+- **Statistical Rigor**: Standard approach in econometrics and statistics
+- **Better Generalization**: Choose models that predict well out-of-sample
 
-## 🧪 Testing
+### Available Metrics
 
-Run the comprehensive test suite:
+- **AIC (Akaike Information Criterion)**: Balances fit vs complexity, favors prediction
+- **BIC (Bayesian Information Criterion)**: Stronger complexity penalty, favors parsimony  
+- **Log-Likelihood**: Goodness of fit measure
+- **Parameter Count**: Effective number of model parameters
 
-```bash
-# Run all tests
-uv run pytest tests/ -v
+### Model Selection Workflow
 
-# Run with coverage
-uv run pytest tests/ --cov=src --cov-report=term-missing
+```python
+# Compare models with information criteria
+comparison = dml.compare_models(...)
 
-# Run specific method tests
-uv run pytest tests/test_psm.py -v          # PSM tests
-uv run pytest tests/test_did.py -v          # DiD tests
-uv run pytest tests/test_integration.py -v  # Integration tests
+# Best model selection
+best_aic_model = comparison.loc[comparison['aic'].idxmin()]
+best_bic_model = comparison.loc[comparison['bic'].idxmin()]
+
+# Information criteria statistics
+print(f"AIC Range: [{comparison['aic'].min():.2f}, {comparison['aic'].max():.2f}]")
+print(f"BIC Range: [{comparison['bic'].min():.2f}, {comparison['bic'].max():.2f}]")
 ```
 
-**Test Coverage**: 84% overall with 97 tests passing
+## 📈 Method Comparison Guide
 
-## 📚 Documentation
+| Method | Best Use Case | Key Strength | Limitation |
+|--------|---------------|--------------|------------|
+| **CUPED** | Randomized experiments with pre-data | High precision, preserves randomization | Requires good pre-experiment predictors |
+| **DML** | High-dimensional observational data | Robust to model misspecification | Complex, requires cross-fitting |
+| **PSM** | Observational data with good covariates | Controls for observed confounders | Can't control unobserved confounders |
+| **DiD** | Before/after natural experiments | Controls for time-invariant confounders | Needs parallel trends assumption |
 
-- **[Configuration Parameters](docs/configuration_parameters.md)**: Detailed explanation of all simulation parameters
-- **[PSM Notebook](notebooks/02_psm_tax.ipynb)**: Step-by-step PSM tutorial
-- **[DiD Notebook](notebooks/01_did_tax.ipynb)**: Difference-in-differences demonstration
-- **[API Documentation](docs/)**: Detailed API reference
+## 🧪 Testing & Quality Assurance
 
-## 🎯 Key Features
+### Comprehensive Test Suite
+- **130+ unit tests** covering all methods and edge cases
+- **Integration tests** comparing methods on same datasets  
+- **Edge case handling**: Small samples, perfect separation, missing data
+- **Continuous integration** with pytest and quality checks
 
-### Statistical Rigor
-- **Proper statistical tests**: Automatic selection of appropriate tests for different data types
-- **Binary outcome handling**: Special treatment for boolean/binary outcomes with proportion tests
-- **Robust error handling**: Conservative fallbacks when statistical tests fail
-- **Comprehensive diagnostics**: Balance assessment, model fit statistics, effect visualization
+### Code Quality Standards
+- **Linting**: Automated code formatting and style checks with ruff
+- **Type hints**: Full type annotation for better IDE support
+- **Documentation**: Comprehensive docstrings and examples
+- **Error handling**: Robust error messages and graceful failures
 
-### Production Ready
-- **Comprehensive testing**: 97 tests with 84% coverage
-- **Clean code**: Ruff linting, consistent formatting, type hints
-- **Error handling**: Graceful handling of edge cases and invalid inputs
-- **Documentation**: Detailed docstrings and user guides
-
-### Flexibility
-- **Multiple matching methods**: Nearest neighbor, caliper, with/without replacement
-- **Configurable parameters**: Extensive customization options
-- **Modular design**: Easy to extend with additional methods
-- **Integration ready**: Consistent APIs across different causal methods
-
-## 🔧 Development
-
-### Code Quality
-```bash
-# Linting and formatting
-uv run ruff check src/ tests/
-uv run ruff format src/ tests/
-
-# Type checking
-uv run mypy src/
-```
-
-### Adding New Methods
-1. Create implementation in `src/causal_methods/your_method.py`
-2. Add comprehensive tests in `tests/test_your_method.py`
-3. Create demonstration notebook in `notebooks/`
-4. Update documentation
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass and code is properly formatted
-5. Update documentation
-6. Submit a pull request
-
-## 📈 Roadmap
-
-**Phase 2** (Planned):
-- [ ] Double Machine Learning (DML)
-- [ ] Instrumental Variables (IV)
-- [ ] CUPED (Controlled-experiment Using Pre-Experiment Data)
-- [ ] Causal Forests
-- [ ] Synthetic Control Methods
-
-**Phase 3** (Future):
-- [ ] Web interface for interactive analysis
-- [ ] Automated report generation
-- [ ] Integration with common data platforms
-- [ ] Advanced sensitivity analysis tools
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built with modern Python tooling (uv, ruff, pytest)
-- Inspired by real-world causal inference challenges in product analytics
-- Designed for educational and practical use in business contexts 
+### Test Coverage Areas
+- ✅ **DML**: Treatment effects, multiple outcomes, model comparison, information criteria, cross-fitting
+- ✅ **CUPED**: Variance reduction, covariate balance, binary/continuous outcomes  
+- ✅ **PSM**: Propensity scores, matching algorithms, balance assessment
+- ✅ **DiD**: Panel data, parallel trends, clustering 
