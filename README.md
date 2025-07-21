@@ -49,6 +49,7 @@ from src.causal_methods.dml import DoubleMachineLearning
 from src.causal_methods.cuped import CUPED
 from src.causal_methods.did import DifferenceInDifferences
 from src.causal_methods.synthetic_control import SyntheticControl
+from src.causal_methods.causal_forest import CausalForest
 from src.data_simulation import TaxSoftwareDataSimulator
 
 # Generate synthetic data
@@ -81,6 +82,13 @@ print(f"DiD ATE: {did_results['treatment_effect']:.4f}")
 sc = SyntheticControl(df, random_state=42)
 sc_results = sc.construct_synthetic_controls()
 print(f"Synthetic Control ATE: {sc_results['average_treatment_effect']:.4f}")
+
+# 6. Causal Forest (for heterogeneous effects)
+cf = CausalForest(df, random_state=42)
+cf.fit_causal_forest('filed_2024', 'used_smart_assistant')
+cf_results = cf.estimate_treatment_effects()
+print(f"Causal Forest ATE: {cf_results['ate']:.4f}")
+print(f"Effect Heterogeneity: ±{cf_results['ate_std']:.4f}")
 ```
 
 ## 📚 **Detailed Method Documentation**
