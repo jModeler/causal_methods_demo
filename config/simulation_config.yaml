@@ -1,0 +1,210 @@
+# Causal Inference Data Simulation Configuration
+# This file contains all parameters for generating synthetic tax software user data
+
+# Basic simulation settings
+simulation:
+  random_seed: 42
+  default_n_users: 10000
+
+# User demographic distributions
+demographics:
+  income_brackets:
+    values: ["<30k", "30k-50k", "50k-75k", "75k-100k", "100k-150k", ">150k"]
+    weights: [0.15, 0.20, 0.25, 0.20, 0.15, 0.05]
+  
+  device_types:
+    values: ["mobile", "desktop", "tablet"]
+    weights: [0.45, 0.50, 0.05]
+  
+  user_types:
+    values: ["new", "returning"]
+    weights: [0.35, 0.65]
+  
+  regions:
+    values: ["West", "East", "Midwest", "South"]
+    weights: [0.25, 0.30, 0.20, 0.25]
+  
+  age:
+    mean: 45
+    std: 15
+    min_age: 18
+    max_age: 80
+
+# Tech-savviness score calculation (base 0-100 scale)
+tech_savviness:
+  base_score: 50
+  
+  # Age-based adjustments
+  age_adjustments:
+    young_threshold: 35
+    young_boost: 20
+    old_threshold: 55
+    old_penalty: -15
+  
+  # Income-based adjustments
+  income_adjustments:
+    high_income_brackets: [">150k", "100k-150k"]
+    high_income_boost: 15
+    low_income_brackets: ["<30k"]
+    low_income_penalty: -10
+  
+  # Regional adjustments
+  region_adjustments:
+    west_boost: 10
+    midwest_south_penalty: -5
+  
+  # Distribution parameters
+  std: 15
+  min_score: 0
+  max_score: 100
+
+# 2023 baseline behavior parameters
+baseline_2023:
+  # Base filing probability
+  filing:
+    base_rate: 0.75
+    
+    # Income effects on filing
+    income_effects:
+      high_income_boost: 0.10  # for 75k+
+      low_income_penalty: -0.15  # for <30k
+    
+    # User type effects
+    returning_user_boost: 0.08
+    
+    # Age effects
+    prime_age_min: 25
+    prime_age_max: 55
+    prime_age_boost: 0.05
+    non_prime_penalty: -0.05
+  
+  # Time to complete filing (minutes)
+  time_to_complete:
+    base_time: 120
+    returning_user_reduction: -30
+    high_tech_reduction: -20  # tech_savviness > 70
+    low_tech_penalty: 40      # tech_savviness < 30
+    std: 30
+    min_time: 30
+  
+  # Number of sessions
+  sessions:
+    base_sessions: 2.5
+    mobile_penalty: 0.5
+    low_tech_penalty: 1.0  # tech_savviness < 40
+  
+  # Support tickets
+  support_tickets:
+    base_rate: 0.15
+    low_tech_boost: 0.15    # tech_savviness < 30
+    elderly_boost: 0.10     # age > 65
+
+# Early login behavior (predictor of treatment adoption)
+early_login:
+  base_probability: 0.3
+  high_tech_boost: 0.2      # tech_savviness > 60
+  returning_user_boost: 0.15
+
+# Treatment assignment (Smart Filing Assistant adoption)
+treatment:
+  base_adoption_rate: 0.4
+  
+  # Tech-savviness effects (primary driver)
+  tech_effects:
+    high_threshold: 70
+    high_boost: 0.25
+    medium_threshold: 50
+    medium_boost: 0.10
+    low_threshold: 30
+    low_penalty: -0.20
+  
+  # Age effects
+  age_effects:
+    young_threshold: 35
+    young_boost: 0.15
+    old_threshold: 55
+    old_penalty: -0.10
+  
+  # Device effects
+  device_effects:
+    mobile_boost: 0.05
+    tablet_penalty: -0.05
+  
+  # Other factors
+  early_login_boost: 0.20
+  returning_user_boost: 0.05
+  
+  # Income effects
+  income_effects:
+    high_income_boost: 0.10  # for >150k, 100k-150k
+    low_income_penalty: -0.05  # for <30k
+  
+  # Bounds
+  min_probability: 0.05
+  max_probability: 0.95
+
+# 2024 outcomes (post-treatment)
+outcomes_2024:
+  # Main outcome: filing conversion
+  filing:
+    base_rate: 0.72
+    
+    # Treatment effects
+    treatment_effects:
+      base_effect: 0.08  # 8 percentage points
+      
+      # Heterogeneous effects
+      low_tech_boost: 0.05     # tech_savviness < 40
+      high_tech_reduction: -0.02  # tech_savviness > 70
+      older_user_boost: 0.03   # age > 55
+      new_user_boost: 0.04     # user_type == 'new'
+    
+    # Persistence from previous year
+    filed_2023_boost: 0.15
+    
+    # Apply same demographic effects as 2023
+    apply_demographic_effects: true
+    
+    # Maximum probability
+    max_probability: 0.95
+  
+  # Time to complete (for users who filed)
+  time_to_complete:
+    # Uses 2023 baseline as starting point
+    treatment_time_reduction:
+      min_reduction: 0.15  # 15% reduction
+      max_reduction: 0.25  # 25% reduction
+    
+    std: 20
+    min_time: 20
+  
+  # Number of sessions (for users who filed)
+  sessions:
+    # Uses 2023 baseline as starting point
+    treatment_session_reduction:
+      min_reduction: 0.10  # 10% reduction
+      max_reduction: 0.30  # 30% reduction
+  
+  # Support tickets
+  support_tickets:
+    base_rate: 0.12
+    filed_2023_penalty: 0.05  # users who had issues before
+    treatment_reduction: 0.6  # 40% reduction (multiply by 0.6)
+  
+  # User satisfaction (1-10 scale, for users who filed)
+  satisfaction:
+    base_score: 7.2
+    treatment_boost: 0.8
+    high_tech_boost: 0.3      # tech_savviness > 60
+    support_history_penalty: -0.5  # had support tickets in 2023
+    std: 1.2
+    min_score: 1
+    max_score: 10
+
+# Output settings
+output:
+  default_path: "data/simulated_users.csv"
+  include_derived_features: true
+  derived_features:
+    - "time_improvement"
+    - "session_improvement" 

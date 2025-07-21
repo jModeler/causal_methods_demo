@@ -53,6 +53,7 @@ dependencies = [
     # Data generation and utilities
     "faker>=18.0.0",  # For realistic synthetic data
     "tqdm>=4.64.0",   # Progress bars
+    "pyyaml>=6.0",    # For configuration files
 ]
 
 [project.optional-dependencies]
