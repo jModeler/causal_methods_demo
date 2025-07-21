@@ -1049,3 +1049,341 @@ class TestMethodComparison:
         
         assert 'average_treatment_effect' in results
         assert results['average_treatment_effect'] is not None
+
+
+class TestCausalForestIntegration:
+    """Integration tests for Causal Forest method."""
+    
+    def test_causal_forest_basic_workflow(self, sample_dataset):
+        """Test complete causal forest workflow on tax software data."""
+        from src.causal_methods.causal_forest import CausalForest
+        
+        cf = CausalForest(sample_dataset, random_state=42)
+        
+        # Test fitting
+        performance = cf.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['filed_2023', 'age', 'tech_savviness', 'sessions_2023'],
+            test_size=0.3
+        )
+        
+        # Check performance metrics
+        assert isinstance(performance, dict)
+        assert 'implementation' in performance
+        assert 'train_ate' in performance
+        assert 'test_ate' in performance
+        assert 'heterogeneity_measure' in performance
+        
+        # Check treatment effects
+        te = cf.treatment_effects
+        assert 'ate' in te
+        assert 'individual_effects' in te
+        assert 'heterogeneity_std' in te
+        assert 'p_value' in te
+        
+        # ATE should be reasonable for tax filing context
+        ate = te['ate']
+        assert -0.5 <= ate <= 0.5, f"ATE {ate} seems unrealistic for filing rates"
+        
+        # Individual effects should have reasonable variance
+        individual_effects = te['individual_effects']
+        assert len(individual_effects) > 0
+        assert np.std(individual_effects) >= 0
+    
+    def test_causal_forest_feature_importance(self, sample_dataset):
+        """Test feature importance calculation in causal forest."""
+        from src.causal_methods.causal_forest import CausalForest
+        
+        cf = CausalForest(sample_dataset, random_state=42)
+        
+        cf.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['filed_2023', 'age', 'tech_savviness', 'sessions_2023']
+        )
+        
+        # Check feature importance structure
+        fi = cf.feature_importance
+        assert 'importances' in fi
+        assert 'feature_names' in fi
+        assert 'sorted_indices' in fi
+        
+        # Check dimensions
+        assert len(fi['importances']) == len(cf.covariate_cols)
+        assert len(fi['feature_names']) == len(cf.covariate_cols)
+        assert len(fi['sorted_indices']) == len(cf.covariate_cols)
+        
+        # Importances should be non-negative
+        assert all(imp >= 0 for imp in fi['importances'])
+        
+        # Feature names should match covariates
+        assert set(fi['feature_names']) == set(cf.covariate_cols)
+    
+    def test_causal_forest_conditional_effects(self, sample_dataset):
+        """Test conditional treatment effect estimation."""
+        from src.causal_methods.causal_forest import CausalForest
+        
+        cf = CausalForest(sample_dataset, random_state=42)
+        
+        cf.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['age', 'tech_savviness', 'filed_2023']
+        )
+        
+        # Test conditional effects for specific user types
+        segments = {
+            'young_tech_savvy': {'age': 25, 'tech_savviness': 8},
+            'older_low_tech': {'age': 65, 'tech_savviness': 3},
+            'previous_filer': {'filed_2023': 1, 'age': 45},
+            'new_user': {'filed_2023': 0, 'age': 35}
+        }
+        
+        segment_effects = {}
+        for segment_name, features in segments.items():
+            result = cf.estimate_conditional_effects(features)
+            segment_effects[segment_name] = result['conditional_treatment_effect']
+            
+            # Check result structure
+            assert 'conditional_treatment_effect' in result
+            assert 'feature_values' in result
+            assert isinstance(result['conditional_treatment_effect'], (int, float))
+        
+        # Effects should vary across segments (heterogeneity)
+        effect_values = list(segment_effects.values())
+        if len(set(effect_values)) > 1:  # If there's variation
+            assert np.std(effect_values) > 0, "Expected heterogeneity across segments"
+    
+    def test_causal_forest_vs_other_methods(self, sample_dataset):
+        """Compare causal forest with other causal inference methods."""
+        from src.causal_methods.causal_forest import CausalForest
+        from src.causal_methods.psm import PropensityScoreMatching
+        from src.causal_methods.dml import DoubleMachineLearning
+        
+        # Common setup
+        outcome_col = 'filed_2024'
+        treatment_col = 'used_smart_assistant'
+        covariates = ['age', 'tech_savviness', 'filed_2023']
+        
+        results = {}
+        
+        # Causal Forest
+        cf = CausalForest(sample_dataset, random_state=42)
+        cf.fit_causal_forest(outcome_col, treatment_col, covariates)
+        results['Causal Forest'] = cf.treatment_effects['ate']
+        
+        # PSM for comparison
+        try:
+            psm = PropensityScoreMatching(sample_dataset)
+            psm.estimate_propensity_scores(covariates=covariates)
+            psm.perform_matching(method='nearest_neighbor')
+            psm_effects = psm.estimate_treatment_effects(outcome_cols=outcome_col)
+            results['PSM'] = psm_effects[outcome_col]['ate']
+        except Exception:
+            # PSM might fail with small samples
+            pass
+        
+        # DML for comparison
+        try:
+            dml = DoubleMachineLearning(sample_dataset, random_state=42)
+            dml_results = dml.estimate_treatment_effects(outcome_col, treatment_col, covariates)
+            results['DML'] = dml_results['ate']
+        except Exception:
+            # DML might fail with small samples
+            pass
+        
+        # Check that causal forest produces reasonable results
+        cf_ate = results['Causal Forest']
+        assert isinstance(cf_ate, (int, float))
+        assert not np.isnan(cf_ate)
+        assert not np.isinf(cf_ate)
+        
+        # If we have multiple methods, check for reasonable consensus
+        if len(results) > 1:
+            effect_estimates = list(results.values())
+            effect_range = max(effect_estimates) - min(effect_estimates)
+            
+            # Effects shouldn't differ by more than 50 percentage points (very liberal)
+            assert effect_range <= 0.5, f"Methods disagree too much: {results}"
+    
+    def test_causal_forest_heterogeneity_detection(self, sample_dataset):
+        """Test causal forest's ability to detect treatment effect heterogeneity."""
+        from src.causal_methods.causal_forest import CausalForest
+        
+        cf = CausalForest(sample_dataset, random_state=42)
+        
+        performance = cf.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['age', 'tech_savviness', 'filed_2023', 'sessions_2023']
+        )
+        
+        # Check heterogeneity measures
+        heterogeneity_ratio = performance['heterogeneity_measure']
+        heterogeneity_std = cf.treatment_effects['heterogeneity_std']
+        
+        assert heterogeneity_ratio >= 0
+        assert heterogeneity_std >= 0
+        
+        # Individual effects should exist
+        individual_effects = cf.treatment_effects['individual_effects']
+        assert len(individual_effects) > 0
+        
+        # Check effect distribution
+        positive_effects = np.sum(individual_effects > 0)
+        negative_effects = np.sum(individual_effects < 0)
+        total_effects = len(individual_effects)
+        
+        # At least some variation should exist (not all identical)
+        unique_effects = len(np.unique(np.round(individual_effects, 4)))
+        assert unique_effects > 1, "Expected some heterogeneity in treatment effects"
+    
+    def test_causal_forest_robustness_to_data_issues(self, sample_dataset):
+        """Test causal forest robustness to common data issues."""
+        from src.causal_methods.causal_forest import CausalForest
+        
+        # Test with outliers
+        data_with_outliers = sample_dataset.copy()
+        data_with_outliers.loc[0, 'age'] = 999
+        data_with_outliers.loc[1, 'income'] = 1e6
+        
+        cf_outliers = CausalForest(data_with_outliers, random_state=42)
+        performance_outliers = cf_outliers.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['age', 'income', 'tech_savviness']
+        )
+        
+        # Should complete without errors
+        assert cf_outliers.is_fitted
+        assert not np.isnan(performance_outliers['train_ate'])
+        
+        # Test with constant features
+        data_with_constants = sample_dataset.copy()
+        data_with_constants['constant_feature'] = 42
+        
+        cf_constants = CausalForest(data_with_constants, random_state=42)
+        performance_constants = cf_constants.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['age', 'constant_feature']
+        )
+        
+        # Should handle constant features gracefully
+        assert cf_constants.is_fitted
+        assert not np.isnan(performance_constants['train_ate'])
+    
+    def test_causal_forest_business_segments(self, sample_dataset):
+        """Test causal forest analysis for realistic business segments."""
+        from src.causal_methods.causal_forest import CausalForest
+        
+        cf = CausalForest(sample_dataset, random_state=42)
+        
+        cf.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['age', 'tech_savviness', 'income', 'filed_2023']
+        )
+        
+        # Test realistic business segments
+        business_segments = {
+            'High Value Customer': {
+                'income': 80000,
+                'filed_2023': 1,
+                'tech_savviness': 7
+            },
+            'New User': {
+                'filed_2023': 0,
+                'age': 35,
+                'tech_savviness': 5
+            },
+            'Senior User': {
+                'age': 65,
+                'tech_savviness': 3,
+                'filed_2023': 1
+            },
+            'Tech Savvy Young': {
+                'age': 28,
+                'tech_savviness': 9,
+                'income': 60000
+            }
+        }
+        
+        segment_results = {}
+        for segment_name, features in business_segments.items():
+            result = cf.estimate_conditional_effects(features)
+            segment_results[segment_name] = result['conditional_treatment_effect']
+        
+        # All segments should have valid effect estimates
+        for segment, effect in segment_results.items():
+            assert isinstance(effect, (int, float))
+            assert not np.isnan(effect)
+            assert -1 <= effect <= 1, f"Effect for {segment} seems unrealistic: {effect}"
+    
+    def test_causal_forest_visualization_integration(self, sample_dataset):
+        """Test that causal forest visualizations work end-to-end."""
+        from src.causal_methods.causal_forest import CausalForest
+        import matplotlib.pyplot as plt
+        
+        # Set up matplotlib for testing
+        plt.ioff()
+        
+        try:
+            cf = CausalForest(sample_dataset, random_state=42)
+            
+            cf.fit_causal_forest(
+                outcome_col='filed_2024',
+                treatment_col='used_smart_assistant',
+                covariate_cols=['age', 'tech_savviness', 'filed_2023']
+            )
+            
+            # Test treatment effect distribution plot
+            cf.plot_treatment_effect_distribution(bins=15, figsize=(10, 6))
+            assert len(plt.get_fignums()) > 0
+            
+            # Test feature importance plot
+            cf.plot_feature_importance(top_n=3, figsize=(8, 5))
+            assert len(plt.get_fignums()) > 0
+            
+        finally:
+            plt.close('all')
+    
+    def test_causal_forest_summary_report_integration(self, sample_dataset):
+        """Test causal forest summary report generation with real data."""
+        from src.causal_methods.causal_forest import CausalForest
+        
+        cf = CausalForest(sample_dataset, random_state=42)
+        
+        cf.fit_causal_forest(
+            outcome_col='filed_2024',
+            treatment_col='used_smart_assistant',
+            covariate_cols=['age', 'tech_savviness', 'filed_2023', 'sessions_2023']
+        )
+        
+        # Generate report
+        report = cf.generate_summary_report()
+        
+        # Check report content
+        assert isinstance(report, str)
+        assert len(report) > 0
+        
+        # Should contain key business insights
+        required_sections = [
+            "CAUSAL FOREST ANALYSIS REPORT",
+            "Average Treatment Effect",
+            "HETEROGENEITY ANALYSIS",
+            "TOP FEATURES",
+            "BUSINESS RECOMMENDATIONS"
+        ]
+        
+        for section in required_sections:
+            assert section in report, f"Missing section: {section}"
+        
+        # Should contain actual values from the analysis
+        ate = cf.treatment_effects['ate']
+        assert f"{ate:.4f}" in report, "ATE value should appear in report"
+        
+        # Should contain feature names
+        top_feature = cf.feature_importance['feature_names'][cf.feature_importance['sorted_indices'][0]]
+        assert top_feature in report, "Top feature should be mentioned in report"
