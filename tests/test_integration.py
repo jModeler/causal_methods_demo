@@ -3,13 +3,13 @@
 import tempfile
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
-import numpy as np
 
 from src.causal_methods.did import DifferenceInDifferences
-from src.data_simulation import TaxSoftwareDataSimulator, generate_and_save_data
 from src.causal_methods.psm import PropensityScoreMatching, load_and_analyze_psm
+from src.data_simulation import TaxSoftwareDataSimulator, generate_and_save_data
 
 
 class TestFullWorkflow:
@@ -415,7 +415,7 @@ class TestPSMIntegration:
         # Generate data
         df = TaxSoftwareDataSimulator(
             n_users=200,  # Larger sample for PSM
-            config_path=real_config_path
+            config_path=real_config_path,
         ).generate_complete_dataset()
 
         # Initialize PSM
@@ -424,7 +424,7 @@ class TestPSMIntegration:
         # Step 1: Estimate propensity scores
         ps_results = psm.estimate_propensity_scores(
             treatment_col="used_smart_assistant",
-            covariates=["age", "tech_savviness", "filed_2023", "early_login_2024"]
+            covariates=["age", "tech_savviness", "filed_2023", "early_login_2024"],
         )
 
         # Verify propensity score estimation
@@ -435,9 +435,7 @@ class TestPSMIntegration:
 
         # Step 2: Perform matching
         matching_results = psm.perform_matching(
-            method="nearest_neighbor",
-            caliper=0.1,
-            replacement=False
+            method="nearest_neighbor", caliper=0.1, replacement=False
         )
 
         # Verify matching
@@ -459,8 +457,7 @@ class TestPSMIntegration:
 
         # Step 4: Estimate treatment effects
         effect_results = psm.estimate_treatment_effects(
-            outcome_cols=["filed_2024"],
-            treatment_col="used_smart_assistant"
+            outcome_cols=["filed_2024"], treatment_col="used_smart_assistant"
         )
 
         # Verify treatment effect estimation
@@ -472,7 +469,9 @@ class TestPSMIntegration:
         assert "p_value" in effect_stats
 
         # Confidence interval should make sense
-        assert effect_stats["ci_lower"] <= effect_stats["ate"] <= effect_stats["ci_upper"]
+        assert (
+            effect_stats["ci_lower"] <= effect_stats["ate"] <= effect_stats["ci_upper"]
+        )
 
     def test_psm_convenience_function_integration(self, real_config_path):
         """Test PSM convenience function with complete pipeline."""
@@ -482,9 +481,7 @@ class TestPSMIntegration:
 
         try:
             df = generate_and_save_data(
-                output_path=output_path,
-                n_users=150,
-                config_path=real_config_path
+                output_path=output_path, n_users=150, config_path=real_config_path
             )
 
             # Test convenience function
@@ -493,7 +490,7 @@ class TestPSMIntegration:
                 treatment_col="used_smart_assistant",
                 outcome_cols=["filed_2024", "satisfaction_2024"],
                 matching_method="nearest_neighbor",
-                caliper=0.15
+                caliper=0.15,
             )
 
             # Should have completed full analysis
@@ -503,8 +500,9 @@ class TestPSMIntegration:
             assert psm.treatment_effects is not None
 
             # Should have results for available outcomes
-            available_outcomes = [col for col in ["filed_2024", "satisfaction_2024"] 
-                                if col in df.columns]
+            available_outcomes = [
+                col for col in ["filed_2024", "satisfaction_2024"] if col in df.columns
+            ]
             for outcome in available_outcomes:
                 assert outcome in psm.treatment_effects
 
@@ -516,7 +514,7 @@ class TestPSMIntegration:
         scenarios = [
             "config/simulation_config.yaml",
             "config/scenario_high_treatment.yaml",
-            "config/scenario_low_adoption.yaml"
+            "config/scenario_low_adoption.yaml",
         ]
 
         psm_results = {}
@@ -527,16 +525,14 @@ class TestPSMIntegration:
 
             # Generate data for this scenario
             df = TaxSoftwareDataSimulator(
-                n_users=120,
-                config_path=scenario_path
+                n_users=120, config_path=scenario_path
             ).generate_complete_dataset()
 
             # Run PSM analysis
             psm = PropensityScoreMatching(df)
             psm.estimate_propensity_scores()
             matching_results = psm.perform_matching(
-                method="nearest_neighbor",
-                caliper=0.15
+                method="nearest_neighbor", caliper=0.15
             )
 
             if psm.matched_data is not None and len(psm.matched_data) > 10:
@@ -546,7 +542,9 @@ class TestPSMIntegration:
                 psm_results[scenario_name] = {
                     "treatment_rate": df["used_smart_assistant"].mean(),
                     "matching_rate": matching_results["matching_rate"],
-                    "ate": psm.treatment_effects["filed_2024"]["ate"] if psm.treatment_effects else np.nan
+                    "ate": psm.treatment_effects["filed_2024"]["ate"]
+                    if psm.treatment_effects
+                    else np.nan,
                 }
 
         # Should have results for multiple scenarios
@@ -555,8 +553,7 @@ class TestPSMIntegration:
     def test_psm_balance_improvement(self, real_config_path):
         """Test that PSM actually improves covariate balance."""
         df = TaxSoftwareDataSimulator(
-            n_users=250,
-            config_path=real_config_path
+            n_users=250, config_path=real_config_path
         ).generate_complete_dataset()
 
         psm = PropensityScoreMatching(df)
@@ -592,17 +589,12 @@ class TestPSMIntegration:
     def test_psm_with_missing_data(self, real_config_path):
         """Test PSM robustness with missing data."""
         df = TaxSoftwareDataSimulator(
-            n_users=150,
-            config_path=real_config_path
+            n_users=150, config_path=real_config_path
         ).generate_complete_dataset()
 
         # Introduce missing values in satisfaction
         if "satisfaction_2024" in df.columns:
-            missing_idx = np.random.choice(
-                df.index,
-                size=len(df) // 10,
-                replace=False
-            )
+            missing_idx = np.random.choice(df.index, size=len(df) // 10, replace=False)
             df.loc[missing_idx, "satisfaction_2024"] = np.nan
 
         # PSM should handle missing data gracefully
@@ -630,8 +622,7 @@ class TestPSMIntegration:
     def test_psm_sensitivity_to_caliper(self, real_config_path):
         """Test PSM sensitivity to different caliper values."""
         df = TaxSoftwareDataSimulator(
-            n_users=200,
-            config_path=real_config_path
+            n_users=200, config_path=real_config_path
         ).generate_complete_dataset()
 
         caliper_values = [0.05, 0.1, 0.2, 0.3]
@@ -643,19 +634,20 @@ class TestPSMIntegration:
 
             caliper = caliper_std * np.std(psm.propensity_scores)
             matching_results = psm.perform_matching(
-                method="nearest_neighbor",
-                caliper=caliper
+                method="nearest_neighbor", caliper=caliper
             )
 
             if psm.matched_data is not None and len(psm.matched_data) > 10:
                 psm.estimate_treatment_effects(outcome_cols="filed_2024")
 
-                results_by_caliper.append({
-                    "caliper_std": caliper_std,
-                    "matching_rate": matching_results["matching_rate"],
-                    "sample_size": len(psm.matched_data),
-                    "ate": psm.treatment_effects["filed_2024"]["ate"]
-                })
+                results_by_caliper.append(
+                    {
+                        "caliper_std": caliper_std,
+                        "matching_rate": matching_results["matching_rate"],
+                        "sample_size": len(psm.matched_data),
+                        "ate": psm.treatment_effects["filed_2024"]["ate"],
+                    }
+                )
 
         # Should have results for multiple calipers
         assert len(results_by_caliper) >= 2
@@ -676,8 +668,7 @@ class TestPSMAndDiDComparison:
     def test_psm_vs_did_estimates(self, real_config_path):
         """Compare PSM and DiD estimates on same data."""
         df = TaxSoftwareDataSimulator(
-            n_users=200,
-            config_path=real_config_path
+            n_users=200, config_path=real_config_path
         ).generate_complete_dataset()
 
         # PSM Analysis
@@ -705,7 +696,7 @@ class TestPSMAndDiDComparison:
         """Test that different causal methods produce reasonable estimates."""
         df = TaxSoftwareDataSimulator(
             n_users=300,  # Larger sample for stable estimates
-            config_path=real_config_path
+            config_path=real_config_path,
         ).generate_complete_dataset()
 
         estimates = {}
@@ -740,5 +731,7 @@ class TestPSMAndDiDComparison:
 
             # PSM should generally be different from naive (bias correction)
             # But both should be reasonable effect sizes
-            assert abs(estimates["naive"]) < 1.0  # Filing rate effect shouldn't be > 100pp
+            assert (
+                abs(estimates["naive"]) < 1.0
+            )  # Filing rate effect shouldn't be > 100pp
             assert abs(estimates["psm"]) < 1.0

@@ -13,6 +13,7 @@ Key features:
 - Comprehensive visualization tools
 """
 
+import warnings
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -108,11 +109,20 @@ class PropensityScoreMatching:
         y_pred = self.model.predict(X)
         y_pred_proba = propensity_scores
 
+        # Get classification report with warning suppression
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message="Precision is ill-defined", category=UserWarning
+            )
+            classification_dict = classification_report(
+                y, y_pred, output_dict=True, zero_division=0
+            )
+
         results = {
             "model": self.model,
             "covariates_used": available_covariates,
             "auc_score": roc_auc_score(y, y_pred_proba),
-            "classification_report": classification_report(y, y_pred, output_dict=True),
+            "classification_report": classification_dict,
             "propensity_score_range": {
                 "min": propensity_scores.min(),
                 "max": propensity_scores.max(),
@@ -706,6 +716,10 @@ class PropensityScoreMatching:
             if covar not in data.columns:
                 continue
 
+            # Skip non-informative columns
+            if covar in ["user_id", "id"] or covar == treatment_col:
+                continue
+
             if data[covar].dtype == "object":
                 # For categorical variables, use standardized difference of proportions
                 treated_props = treated[covar].value_counts(normalize=True)
@@ -739,11 +753,29 @@ class PropensityScoreMatching:
                 pooled_std = np.sqrt((treated_vals.var() + control_vals.var()) / 2)
                 smd = mean_diff / pooled_std if pooled_std > 0 else 0
 
-                # T-test
+                # T-test with proper error handling
                 try:
-                    _, p_value = stats.ttest_ind(treated_vals, control_vals)
-                except:
-                    p_value = np.nan
+                    if len(treated_vals) > 1 and len(control_vals) > 1:
+                        with warnings.catch_warnings():
+                            warnings.filterwarnings(
+                                "ignore",
+                                message="Precision loss occurred in moment calculation",
+                                category=RuntimeWarning,
+                            )
+                            _, p_value = stats.ttest_ind(treated_vals, control_vals)
+
+                            # Handle edge cases where p-value might be invalid
+                            if np.isnan(p_value) or np.isinf(p_value):
+                                p_value = 1.0  # Conservative p-value when test fails
+                    else:
+                        p_value = 1.0  # Conservative p-value with insufficient data
+
+                except (ValueError, RuntimeError, TypeError) as e:
+                    # Only use conservative fallback for actual errors
+                    print(
+                        f"Warning: T-test failed with error {e}, using conservative p-value"
+                    )
+                    p_value = 1.0  # Conservative p-value when test fails
 
                 balance_stats[covar] = {
                     "standardized_mean_diff": smd,
@@ -758,25 +790,31 @@ class PropensityScoreMatching:
         self, data: pd.DataFrame, outcome_col: str, treatment_col: str
     ) -> dict[str, float]:
         """Estimate treatment effect using simple difference of means."""
-        treated = data[data[treatment_col] == 1][outcome_col].dropna()
-        control = data[data[treatment_col] == 0][outcome_col].dropna()
+        treated_outcome = data[data[treatment_col] == 1][outcome_col].dropna()
+        control_outcome = data[data[treatment_col] == 0][outcome_col].dropna()
 
-        if len(treated) == 0 or len(control) == 0:
+        if len(treated_outcome) == 0 or len(control_outcome) == 0:
             return {
                 "ate": np.nan,
                 "ci_lower": np.nan,
                 "ci_upper": np.nan,
                 "p_value": np.nan,
-                "n_treated": len(treated),
-                "n_control": len(control),
+                "n_treated": len(treated_outcome),
+                "n_control": len(control_outcome),
             }
 
+        # Convert boolean to numeric if needed
+        if treated_outcome.dtype == bool:
+            treated_outcome = treated_outcome.astype(int)
+        if control_outcome.dtype == bool:
+            control_outcome = control_outcome.astype(int)
+
         # Calculate ATE
-        ate = treated.mean() - control.mean()
+        ate = treated_outcome.mean() - control_outcome.mean()
 
         # Calculate standard error and confidence interval
-        se_treated = treated.std() / np.sqrt(len(treated))
-        se_control = control.std() / np.sqrt(len(control))
+        se_treated = treated_outcome.std() / np.sqrt(len(treated_outcome))
+        se_control = control_outcome.std() / np.sqrt(len(control_outcome))
         se_ate = np.sqrt(se_treated**2 + se_control**2)
 
         # 95% confidence interval
@@ -785,9 +823,37 @@ class PropensityScoreMatching:
 
         # Two-sample t-test
         try:
-            _, p_value = stats.ttest_ind(treated, control)
-        except:
-            p_value = np.nan
+            if len(treated_outcome) > 1 and len(control_outcome) > 1:
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                        "ignore",
+                        message="Precision loss occurred in moment calculation",
+                        category=RuntimeWarning,
+                    )
+                    _, p_value = stats.ttest_ind(treated_outcome, control_outcome)
+
+                    # Handle edge cases where p-value might be invalid
+                    if np.isnan(p_value) or np.isinf(p_value):
+                        # For binary outcomes, use a proportion test instead
+                        if data[outcome_col].dtype == bool or set(
+                            data[outcome_col].unique()
+                        ).issubset({0, 1}):
+                            p_value = self._proportion_test(
+                                treated_outcome, control_outcome
+                            )
+                        else:
+                            p_value = 1.0  # Conservative fallback
+            else:
+                p_value = 1.0  # Conservative p-value with insufficient data
+
+        except (ValueError, RuntimeError, TypeError):
+            # For binary outcomes, try proportion test as fallback
+            if data[outcome_col].dtype == bool or set(
+                data[outcome_col].unique()
+            ).issubset({0, 1}):
+                p_value = self._proportion_test(treated_outcome, control_outcome)
+            else:
+                p_value = 1.0  # Conservative p-value when test fails
 
         return {
             "ate": ate,
@@ -795,11 +861,43 @@ class PropensityScoreMatching:
             "ci_upper": ci_upper,
             "p_value": p_value,
             "standard_error": se_ate,
-            "n_treated": len(treated),
-            "n_control": len(control),
-            "treated_mean": treated.mean(),
-            "control_mean": control.mean(),
+            "n_treated": len(treated_outcome),
+            "n_control": len(control_outcome),
+            "treated_mean": treated_outcome.mean(),
+            "control_mean": control_outcome.mean(),
         }
+
+    def _proportion_test(self, treated: pd.Series, control: pd.Series) -> float:
+        """Perform a two-proportion z-test for binary outcomes."""
+        try:
+            # Convert to numeric if boolean
+            if treated.dtype == bool:
+                treated = treated.astype(int)
+            if control.dtype == bool:
+                control = control.astype(int)
+
+            n1, n2 = len(treated), len(control)
+            p1, p2 = treated.mean(), control.mean()
+
+            # Pooled proportion
+            p_pooled = (treated.sum() + control.sum()) / (n1 + n2)
+
+            # Standard error for difference in proportions
+            se = np.sqrt(p_pooled * (1 - p_pooled) * (1 / n1 + 1 / n2))
+
+            if se == 0:
+                return 1.0  # No variation, conservative p-value
+
+            # Z-statistic
+            z_stat = (p1 - p2) / se
+
+            # Two-tailed p-value
+            p_value = 2 * (1 - stats.norm.cdf(abs(z_stat)))
+
+            return p_value
+
+        except (ValueError, ZeroDivisionError):
+            return 1.0  # Conservative fallback
 
 
 def load_and_analyze_psm(

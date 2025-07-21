@@ -1,5 +1,7 @@
 """Tests for Propensity Score Matching module."""
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -147,10 +149,12 @@ class TestPropensityScoreMatching:
         psm.estimate_propensity_scores()
         psm.perform_matching(method="nearest_neighbor", caliper=0.2)
 
-        # Estimate treatment effects
-        effects = psm.estimate_treatment_effects(
-            outcome_cols="filed_2024", treatment_col="used_smart_assistant"
-        )
+        # Estimate treatment effects with warning suppression for potential precision issues
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=RuntimeWarning)
+            effects = psm.estimate_treatment_effects(
+                outcome_cols="filed_2024", treatment_col="used_smart_assistant"
+            )
 
         # Check structure
         assert isinstance(effects, dict)
@@ -190,9 +194,12 @@ class TestPropensityScoreMatching:
         ]
 
         if len(available_outcomes) > 1:
-            effects = psm.estimate_treatment_effects(
-                outcome_cols=available_outcomes, treatment_col="used_smart_assistant"
-            )
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=RuntimeWarning)
+                effects = psm.estimate_treatment_effects(
+                    outcome_cols=available_outcomes,
+                    treatment_col="used_smart_assistant",
+                )
 
             assert len(effects) == len(available_outcomes)
             for outcome in available_outcomes:
@@ -405,19 +412,25 @@ class TestBalanceAssessment:
         )
 
         psm = PropensityScoreMatching(data)
-        psm.estimate_propensity_scores()
 
-        # Manual "matching" - use all data
-        psm.matched_data = data.copy()
+        # Suppress warnings for this test since we're creating artificial perfect balance
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-        balance_results = psm.assess_balance(covariates=["age", "tech_savviness"])
+            psm.estimate_propensity_scores()
 
-        # After perfect matching, balance should be very good
-        after_balance = balance_results["after_matching"]
-        for covar in ["age", "tech_savviness"]:
-            if covar in after_balance:
-                smd = abs(after_balance[covar]["standardized_mean_diff"])
-                assert smd < 0.1  # Should be well balanced
+            # Manual "matching" - use all data
+            psm.matched_data = data.copy()
+
+            balance_results = psm.assess_balance(covariates=["age", "tech_savviness"])
+
+            # After perfect matching, balance should be very good
+            after_balance = balance_results["after_matching"]
+            for covar in ["age", "tech_savviness"]:
+                if covar in after_balance:
+                    smd = abs(after_balance[covar]["standardized_mean_diff"])
+                    assert smd < 0.1  # Should be well balanced
 
     def test_balance_categorical_variables(self, sample_dataset):
         """Test balance assessment with categorical variables."""
@@ -451,10 +464,12 @@ class TestTreatmentEffectEstimation:
         psm.estimate_propensity_scores()
         psm.perform_matching(method="nearest_neighbor", caliper=0.2)
 
-        # Estimate effects
-        effects = psm.estimate_treatment_effects(
-            outcome_cols="filed_2024", method="simple_difference"
-        )
+        # Estimate effects with warning suppression
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=RuntimeWarning)
+            effects = psm.estimate_treatment_effects(
+                outcome_cols="filed_2024", method="simple_difference"
+            )
 
         result = effects["filed_2024"]
 
@@ -581,8 +596,6 @@ class TestRobustnessAndEdgeCases:
         psm = PropensityScoreMatching(data)
 
         # Should handle gracefully (may issue warnings)
-        import warnings
-
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             results = psm.estimate_propensity_scores(
