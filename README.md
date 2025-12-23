@@ -37,7 +37,7 @@ uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv pip install -r pyproject.toml
 ```
-**Note:** If using `econml` or `dowhy` libraries, please use a python version `==3.10`. The notebooks in this repository were tested with Python v`3.10.5`
+**Note:** If using `econml` or `dowhy` libraries, please use python version `3.10`. The notebooks in this repository were tested with Python v`3.10.5`
 
 ### Run Analysis Examples
 
