@@ -29,7 +29,7 @@ All methods analyze the same business question: **What is the causal effect of a
 ### Installation
 ```bash
 # Clone repository
-git clone <your-repo-url>
+git clone https://github.com/jModeler/causal_methods_demo.git
 cd causal_methods_demo
 
 # Install with uv (recommended)
