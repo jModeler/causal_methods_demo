@@ -597,7 +597,7 @@ CUPED p-value: {results['cuped']['p_value']:.4f}
             report += "-" * 30 + "\n"
             balance = adjustment_info['balance_check']
             for covar, stats in balance.items():
-                status = "✅ Balanced" if stats['balanced'] else "⚠️ Imbalanced"
+                status = " Balanced" if stats['balanced'] else "️ Imbalanced"
                 report += f"{covar}: {status} (std diff: {stats['std_diff']:.3f})\n"
             report += "\n"
 
@@ -639,29 +639,29 @@ CUPED p-value: {results['cuped']['p_value']:.4f}
         report += f"CUPED analysis: {cuped_sig} (p = {cuped['p_value']:.6f})\n\n"
 
         if orig['p_value'] >= 0.05 and cuped['p_value'] < 0.05:
-            report += "🎉 CUPED enabled detection of a significant effect!\n\n"
+            report += " CUPED enabled detection of a significant effect!\n\n"
         elif orig['p_value'] < 0.05 and cuped['p_value'] >= 0.05:
-            report += "⚠️ CUPED changed significance (investigate further)\n\n"
+            report += "️ CUPED changed significance (investigate further)\n\n"
         elif cuped['p_value'] < orig['p_value']:
-            report += "📈 CUPED improved statistical evidence\n\n"
+            report += " CUPED improved statistical evidence\n\n"
 
         # Recommendations
         report += "6. RECOMMENDATIONS:\n"
         report += "-" * 30 + "\n"
 
         if summary['variance_reduction'] > 0.1:
-            report += "✅ CUPED provides substantial variance reduction (>10%)\n"
-            report += "✅ Recommended for future experiments with similar covariates\n"
+            report += " CUPED provides substantial variance reduction (>10%)\n"
+            report += " Recommended for future experiments with similar covariates\n"
         elif summary['variance_reduction'] > 0.05:
-            report += "✅ CUPED provides moderate variance reduction (5-10%)\n"
-            report += "✅ May be beneficial for larger experiments\n"
+            report += " CUPED provides moderate variance reduction (5-10%)\n"
+            report += " May be beneficial for larger experiments\n"
         else:
-            report += "⚠️ Limited variance reduction (<5%)\n"
-            report += "⚠️ Consider different or additional pre-experiment covariates\n"
+            report += "️ Limited variance reduction (<5%)\n"
+            report += "️ Consider different or additional pre-experiment covariates\n"
 
         if adjustment_info['r2'] < 0.1:
-            report += "⚠️ Low R² suggests weak covariate correlation\n"
-            report += "💡 Consider including more relevant pre-experiment measures\n"
+            report += "️ Low R² suggests weak covariate correlation\n"
+            report += " Consider including more relevant pre-experiment measures\n"
 
         report += "\n" + "=" * 60 + "\n"
 
