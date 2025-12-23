@@ -617,7 +617,7 @@ class CausalForest:
         report += "=" * 60 + "\n\n"
 
         # Model Information
-        report += "📊 MODEL INFORMATION\n"
+        report += " MODEL INFORMATION\n"
         report += "-" * 30 + "\n"
         report += f"Implementation: {self.model_performance['implementation']}\n"
         report += f"Number of trees: {self.n_estimators}\n"
@@ -627,7 +627,7 @@ class CausalForest:
         report += f"Sample size: {len(self.data)}\n\n"
 
         # Treatment Effect Results
-        report += "🎯 TREATMENT EFFECT RESULTS\n"
+        report += " TREATMENT EFFECT RESULTS\n"
         report += "-" * 30 + "\n"
         report += f"Average Treatment Effect (ATE): {ate:.4f}\n"
         report += f"Standard Error: {ate_se:.4f}\n"
@@ -638,7 +638,7 @@ class CausalForest:
         report += f"Statistically Significant (α=0.05): {significance}\n\n"
 
         # Heterogeneity Analysis
-        report += "🔍 HETEROGENEITY ANALYSIS\n"
+        report += " HETEROGENEITY ANALYSIS\n"
         report += "-" * 30 + "\n"
         report += f"Treatment Effect Standard Deviation: {heterogeneity_std:.4f}\n"
         report += f"Heterogeneity Ratio: {self.model_performance['heterogeneity_measure']:.4f}\n"
@@ -663,7 +663,7 @@ class CausalForest:
         report += f"- Range: [{np.min(individual_effects):.4f}, {np.max(individual_effects):.4f}]\n\n"
 
         # Top Features
-        report += "🏆 TOP FEATURES FOR HETEROGENEITY\n"
+        report += " TOP FEATURES FOR HETEROGENEITY\n"
         report += "-" * 30 + "\n"
         importance_data = self.feature_importance
         sorted_idx = importance_data['sorted_indices'][:5]  # Top 5
@@ -674,26 +674,26 @@ class CausalForest:
             report += f"{i}. {feature_name}: {importance:.4f}\n"
 
         # Business Recommendations
-        report += "\n💼 BUSINESS RECOMMENDATIONS\n"
+        report += "\n BUSINESS RECOMMENDATIONS\n"
         report += "-" * 30 + "\n"
 
         if p_value < 0.05:
             if ate > 0:
-                report += "✅ Treatment has a positive and statistically significant effect\n"
+                report += " Treatment has a positive and statistically significant effect\n"
                 if self.model_performance['heterogeneity_measure'] > 0.3:
-                    report += "🎯 High heterogeneity suggests targeting specific subgroups for maximum impact\n"
+                    report += " High heterogeneity suggests targeting specific subgroups for maximum impact\n"
                     top_feature = importance_data['feature_names'][importance_data['sorted_indices'][0]]
-                    report += f"🔍 Focus on segmentation by: {top_feature}\n"
+                    report += f" Focus on segmentation by: {top_feature}\n"
                 else:
-                    report += "📈 Consider broad implementation due to consistent positive effects\n"
+                    report += " Consider broad implementation due to consistent positive effects\n"
             else:
-                report += "⚠️  Treatment has a negative effect - reconsider implementation\n"
+                report += "️  Treatment has a negative effect - reconsider implementation\n"
         else:
-            report += "❓ Treatment effect is not statistically significant\n"
-            report += "📊 Consider collecting more data or refining the intervention\n"
+            report += " Treatment effect is not statistically significant\n"
+            report += " Consider collecting more data or refining the intervention\n"
 
         # Model Performance
-        report += "\n📈 MODEL PERFORMANCE\n"
+        report += "\n MODEL PERFORMANCE\n"
         report += "-" * 30 + "\n"
         report += f"Train ATE: {self.model_performance['train_ate']:.4f}\n"
         report += f"Test ATE: {self.model_performance['test_ate']:.4f}\n"

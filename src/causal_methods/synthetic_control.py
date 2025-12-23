@@ -468,8 +468,8 @@ class SyntheticControl:
         good_fit = self.results['average_pre_treatment_error'] < 0.1
         concentrated_weights = self.results['weight_concentration'] > 0.5
 
-        report += f"Pre-treatment Fit Quality: {'✅ Good' if good_fit else '⚠️  Fair'}\n"
-        report += f"Weight Concentration: {'⚠️  High' if concentrated_weights else '✅ Dispersed'}\n\n"
+        report += f"Pre-treatment Fit Quality: {' Good' if good_fit else '️  Fair'}\n"
+        report += f"Weight Concentration: {'️  High' if concentrated_weights else ' Dispersed'}\n\n"
 
         # Effect interpretation
         report += "4. EFFECT INTERPRETATION:\n"
@@ -481,23 +481,23 @@ class SyntheticControl:
 
         report += f"Effect Direction: {direction}\n"
         report += f"Effect Size: {effect_size}\n"
-        report += f"Statistical Significance: {'✅ Likely' if significant else '❌ Unlikely'}\n\n"
+        report += f"Statistical Significance: {' Likely' if significant else ' Unlikely'}\n\n"
 
         # Recommendations
         report += "5. RECOMMENDATIONS:\n"
         report += "-" * 25 + "\n"
 
         if good_fit and not concentrated_weights:
-            report += "✅ High-quality synthetic controls - results are reliable\n"
+            report += " High-quality synthetic controls - results are reliable\n"
         elif not good_fit:
-            report += "⚠️  Poor pre-treatment fit - consider more predictors\n"
+            report += "️  Poor pre-treatment fit - consider more predictors\n"
         elif concentrated_weights:
-            report += "⚠️  Concentrated weights - results may be sensitive to outliers\n"
+            report += "️  Concentrated weights - results may be sensitive to outliers\n"
 
         if significant:
-            report += "✅ Consider implementing intervention based on positive results\n"
+            report += " Consider implementing intervention based on positive results\n"
         else:
-            report += "⚠️  Inconclusive results - consider larger sample or longer observation period\n"
+            report += "️  Inconclusive results - consider larger sample or longer observation period\n"
 
         report += "\n" + "=" * 70
 

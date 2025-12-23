@@ -12,15 +12,13 @@ description = "Demonstrating causal inference methods for tax software Smart Fil
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
-    {name = "Causal Inference Demo"}
+    {name = "jModeler"}
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
 ]
-requires-python = ">=3.10"
+requires-python = "==3.10.5"
 dependencies = [
     # Core data science packages
     "pandas>=1.5.0",
